@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -28,7 +29,7 @@ gdf = gpd.read_file(
 gdf = gdf.to_crs(epsg=4326)
 
 karnataka = gdf[gdf["STATE"] == "KARNATAKA"]
-print(karnataka)
+# print(karnataka)
 
 def isInKarnataka(lat: float, lon: float) -> bool:
     point = Point(lon, lat)
@@ -122,11 +123,11 @@ def get_ui_data(quality_score):
 async def predict(req: PredictionRequest):
     # print(type(req.lat), type(req.lon))
     if not isInKarnataka(req.lat, req.lon):
-        return {
+        return JSONResponse(status_code=403, content={
             "status": "out_of_range",
             "message": "We are currently available just for Karnataka and will soon be expanding.",
             "recommendation": "Please enter a valid location within Karnataka."
-        }
+        })
     try:
         # 1. Use KDTree to find nearest location metrics for Model 1
         dist, idx = tree.query([req.lat, req.lon])
