@@ -25,10 +25,12 @@ gdf = gpd.read_file(
     "./data/IndiaStatesBoundaryShapes/India_State_Boundary.shp",
 )
 
-print(gdf.columns)
-karnataka = gdf[gdf["STATE"] == "Karnataka"]
+gdf = gdf.to_crs(epsg=4326)
 
-def isNotInKarnataka(lat: float, lon: float) -> bool:
+karnataka = gdf[gdf["STATE"] == "KARNATAKA"]
+print(karnataka)
+
+def isInKarnataka(lat: float, lon: float) -> bool:
     point = Point(lon, lat)
     return karnataka.geometry.contains(point).any()
 
@@ -60,7 +62,7 @@ ookla_scaler = joblib.load('ookla_scaler.pkl')
 signal_model = joblib.load('signal_xgb.pkl')
 
 # Load Look-up Data for Model 1 (Nearest Neighbor search)
-look_up_df = pd.read_csv("final_dataset.csv")
+look_up_df = pd.read_csv("./data/final_dataset.csv")
 look_up_df['download_mbps'] = look_up_df['avg_d_kbps'] / 1000
 look_up_df['upload_mbps'] = look_up_df['avg_u_kbps'] / 1000
 look_up_df['latency_ms'] = look_up_df['avg_lat_ms']
@@ -118,7 +120,8 @@ def get_ui_data(quality_score):
 
 @app.post("/predict")
 async def predict(req: PredictionRequest):
-    if not isNotInKarnataka(req.lat, req.lon):
+    # print(type(req.lat), type(req.lon))
+    if not isInKarnataka(req.lat, req.lon):
         return {
             "status": "out_of_range",
             "message": "We are currently available just for Karnataka and will soon be expanding.",
