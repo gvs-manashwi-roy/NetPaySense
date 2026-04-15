@@ -7,6 +7,8 @@ import torch.nn as nn
 import joblib
 import pandas as pd
 import numpy as np
+import geopandas as gpd
+from shapely.geometry import Point
 from scipy.spatial import KDTree
 
 app = FastAPI(title="NetPaySense API")
@@ -19,10 +21,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-def is_in_karnataka(lat: float, lon: float) -> bool:
-    lat_min, lat_max = 11.5, 18.5
-    lon_min, lon_max = 74.0, 78.5
-    return lat_min <= lat <= lat_max and lon_min <= lon <= lon_max
+gdf = gpd.read_file(
+    "./data/India_State_Boundary.shp",
+)
+
+print(gdf.columns)
+karnataka = gdf[gdf["STATE"] == "Karnataka"]
+
+def isNotInKarnataka(lat: float, lon: float) -> bool:
+    point = Point(lon, lat)
+    return karnataka.geometry.contains(point).any()
 
 # --- MODELS ---
 class OoklaNN(nn.Module):
@@ -110,7 +118,7 @@ def get_ui_data(quality_score):
 
 @app.post("/predict")
 async def predict(req: PredictionRequest):
-    if not is_in_karnataka(req.lat, req.lon):
+    if not isNotInKarnataka(req.lat, req.lon):
         return {
             "status": "out_of_range",
             "message": "We are currently available just for Karnataka and will soon be expanding.",
