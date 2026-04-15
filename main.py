@@ -19,6 +19,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+def is_in_karnataka(lat: float, lon: float) -> bool:
+    lat_min, lat_max = 11.5, 18.5
+    lon_min, lon_max = 74.0, 78.5
+    return lat_min <= lat <= lat_max and lon_min <= lon <= lon_max
 
 # --- MODELS ---
 class OoklaNN(nn.Module):
@@ -106,25 +110,31 @@ def get_ui_data(quality_score):
 
 @app.post("/predict")
 async def predict(req: PredictionRequest):
+    if not is_in_karnataka(req.lat, req.lon):
+        return {
+            "status": "out_of_range",
+            "message": "We are currently available just for Karnataka and will soon be expanding.",
+            "recommendation": "Please enter a valid location within Karnataka."
+        }
     try:
         # 1. Use KDTree to find nearest location metrics for Model 1
         dist, idx = tree.query([req.lat, req.lon])
         nearest = look_up_df.iloc[idx]
-        
+
         # Authentic location from nearest tile
         authentic_lat = float(nearest['lat'])
         authentic_lon = float(nearest['lon'])
-        
+
         # Prepare Model 1 features
         m1_features = np.array([[
-            nearest['download_mbps'], 
-            nearest['upload_mbps'], 
-            nearest['latency_ms'], 
-            authentic_lat, 
+            nearest['download_mbps'],
+            nearest['upload_mbps'],
+            nearest['latency_ms'],
+            authentic_lat,
             authentic_lon
         ]])
         m1_scaled = ookla_scaler.transform(m1_features)
-        
+
         with torch.no_grad():
             m1_out = ookla_model(torch.tensor(m1_scaled, dtype=torch.float32))
             m1_quality = torch.argmax(m1_out, dim=1).item()
@@ -133,13 +143,13 @@ async def predict(req: PredictionRequest):
         if req.rsrp is not None and req.rsrq is not None:
             m2_features = np.array([[req.rsrp, req.rsrq, req.snr or 0, req.cqi or 10, req.dbm or -90]])
             m2_quality = signal_model.predict(m2_features)[0]
-            final_quality = min(m1_quality, m2_quality) 
+            final_quality = min(m1_quality, m2_quality)
         else:
             final_quality = m1_quality
             m2_quality = None
 
         ui_data = get_ui_data(final_quality)
-        
+
         return {
             "lat": authentic_lat,
             "lon": authentic_lon,
