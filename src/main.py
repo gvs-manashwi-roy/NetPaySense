@@ -22,11 +22,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-gdf = gpd.read_file(
-    "./data/IndiaStatesBoundaryShapes/India_State_Boundary.shp",
-)
+gdf = gpd.read_file("./data/IndiaStatesBoundaryShapes/India_State_Boundary.shp")
 
-gdf = gdf.to_crs(epsg=4326)
+gdf = gdf.to_crs(epsg=4326) #  converts the format to latitude and longitude
 
 karnataka = gdf[gdf["STATE"] == "KARNATAKA"]
 # print(karnataka)
@@ -123,7 +121,7 @@ def get_ui_data(quality_score):
 async def predict(req: PredictionRequest):
     # print(type(req.lat), type(req.lon))
     if not isInKarnataka(req.lat, req.lon):
-        return JSONResponse(status_code=403, content={
+        return JSONResponse(status_code=400, content={
             "status": "out_of_range",
             "message": "We are currently available just for Karnataka and will soon be expanding.",
             "recommendation": "Please enter a valid location within Karnataka."
