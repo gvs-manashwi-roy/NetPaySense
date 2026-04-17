@@ -1,0 +1,14 @@
+2026-04-17 11:45:51,078 - INFO - Starting scrape...
+2026-04-17 11:46:14,044 - INFO - Found 10 banks
+2026-04-17 11:46:14,726 - WARNING - \u26a0\ufe0f Possible incomplete data (less than expected banks)
+2026-04-17 11:46:14,728 - INFO - Logged 10 banks to CSV
+2026-04-17 11:46:16,865 - INFO - Browser closed
+2026-04-17 11:46:16,865 - INFO - Script completed successfully
+2026-04-17 18:57:47,671 - INFO - Starting scrape...
+2026-04-17 18:57:59,631 - INFO - Rows found: 10
+2026-04-17 18:58:00,285 - INFO - Saved 10 banks to CSV
+2026-04-17 18:58:02,436 - INFO - Browser closed
+2026-04-17 19:05:57,382 - INFO - Starting scrape...
+2026-04-17 19:06:10,125 - INFO - Rows found: 10
+2026-04-17 19:06:10,767 - INFO - Saved 10 banks to CSV
+2026-04-17 19:06:12,916 - INFO - Browser closed
