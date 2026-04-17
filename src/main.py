@@ -25,6 +25,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+print(DATA_PATH + "/IndiaStatesBoundaryShapes/India_State_Boundary.shp")
 gdf = gpd.read_file(DATA_PATH + "/IndiaStatesBoundaryShapes/India_State_Boundary.shp")
 
 gdf = gdf.to_crs(epsg=4326) #  converts the format to latitude and longitude

@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # 🚀 NetPaySense: AI-Powered Network Quality & Payment Risk Predictor
 
 ![Signal Strength](https://img.shields.io/badge/Signal-Excellent-brightgreen)
@@ -77,3 +78,7 @@ Contributions are welcome! Please open an issue or submit a pull request for any
 ---
 
 *Developed for the Future of Secure and Reliable Digital Payments.*
+=======
+# NetPaySense
+AI-powered payment reliability prediction system using network intelligence
+>>>>>>> frontend-update
