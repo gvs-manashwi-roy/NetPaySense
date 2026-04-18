@@ -190,7 +190,7 @@ async def predict(req: PredictionRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 # Serve Frontend
-app.mount("/", StaticFiles(directory="../Frontend/NetPaySense-main", html=True), name="static")
+app.mount("/", StaticFiles(directory="../Frontend", html=True), name="static")
 
 if __name__ == "__main__":
     import uvicorn
