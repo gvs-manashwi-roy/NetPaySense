@@ -18,6 +18,7 @@ MODEL_PATH = BASE_DIR / "models"
 DATA_PATH = BASE_DIR / "data"
 FRONTEND_DIR = BASE_DIR / "Frontend"
 
+
 app = FastAPI(title="NetPaySense API")
 
 # Enable CORS
