@@ -223,7 +223,7 @@ async def predict(req: PredictionRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 # ----------- FRONTEND -----------
-app.mount("/", StaticFiles(directory=FRONTEND_DIR / "NetPaySense-main", html=True), name="static")
+app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="static")
 
 # ----------- RUN -----------
 if __name__ == "__main__":
