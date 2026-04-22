@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="color-scheme" content="light" />
+  <meta name="color-scheme" content="light dark" />
   <meta name="theme-color" content="#2563eb" />
   <title>NetPaySense</title>
   <link rel="stylesheet" href="style.css" />
@@ -18,12 +18,189 @@
 <body>
   <div class="shell">
 
+    <!-- ── ONBOARDING (shown once) ── -->
+    <div class="onboarding-overlay hidden" id="onboarding">
+      <div class="onboarding-card">
+        <div class="onboarding-slides">
+          <div class="ob-slide active" id="ob-0">
+            <div class="ob-illustration">📡</div>
+            <h2 class="ob-title">Welcome to NetPaySense</h2>
+            <p class="ob-desc">Check network reliability and UPI payment success chances for any location — before you
+              pay.</p>
+          </div>
+          <div class="ob-slide" id="ob-1">
+            <div class="ob-illustration">🗺️</div>
+            <h2 class="ob-title">Smart Location Check</h2>
+            <p class="ob-desc">Enter any location or use GPS to instantly get signal strength, UPI risk level, and bank
+              server status.</p>
+          </div>
+          <div class="ob-slide" id="ob-2">
+            <div class="ob-illustration">🔒</div>
+            <h2 class="ob-title">100% Private</h2>
+            <p class="ob-desc">No data is sent to any server. Everything runs locally on your device. Your location
+              stays yours.</p>
+          </div>
+        </div>
+        <div class="ob-dots">
+          <span class="ob-dot active" id="dot-0"></span>
+          <span class="ob-dot" id="dot-1"></span>
+          <span class="ob-dot" id="dot-2"></span>
+        </div>
+        <button class="next-btn ob-next-btn" id="ob-next-btn" onclick="obNext()">Next →</button>
+        <button class="ob-skip-btn" onclick="obSkip()">Don't show again</button>
+      </div>
+    </div>
+
+    <!-- Settings Panel (full slide-in) -->
+    <div class="settings-overlay hidden" id="settings-panel" onclick="closeSettingsOverlay(event)">
+      <div class="settings-drawer">
+        <!-- Header -->
+        <div class="settings-header">
+          <span class="settings-title">Settings</span>
+          <button class="settings-close" onclick="closeSettings()">✕</button>
+        </div>
+
+        <div class="settings-scroll">
+          <!-- Profile Card -->
+          <div class="settings-profile-card">
+            <div class="settings-avatar">👤</div>
+            <div class="settings-profile-info">
+              <p class="settings-profile-name">My Profile</p>
+              <p class="settings-profile-sub">NetPaySense User</p>
+            </div>
+            <button class="settings-edit-btn" onclick="editProfile()">Edit</button>
+          </div>
+
+          <!-- Appearance -->
+          <p class="settings-section-label">Appearance</p>
+          <div class="settings-group">
+            <div class="settings-row">
+              <div class="settings-row-left">
+                <span class="settings-row-icon">🌙</span>
+                <div>
+                  <p class="settings-row-label">Dark Mode</p>
+                  <p class="settings-row-sub">Switch between light and dark</p>
+                </div>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" id="dark-mode-toggle" onchange="toggleDarkMode(this.checked)" />
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Notifications -->
+          <p class="settings-section-label">Notifications</p>
+          <div class="settings-group">
+            <div class="settings-row">
+              <div class="settings-row-left">
+                <span class="settings-row-icon">🔔</span>
+                <div>
+                  <p class="settings-row-label">Payment Risk Alerts</p>
+                  <p class="settings-row-sub">Get notified on high risk</p>
+                </div>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" id="notif-toggle" />
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <div class="settings-row">
+              <div class="settings-row-left">
+                <span class="settings-row-icon">📳</span>
+                <div>
+                  <p class="settings-row-label">Vibration</p>
+                  <p class="settings-row-sub">Haptic feedback on actions</p>
+                </div>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" id="vibration-toggle" checked />
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Data & Privacy -->
+          <p class="settings-section-label">Data & Privacy</p>
+          <div class="settings-group">
+            <div class="settings-row" onclick="clearHistory()" style="cursor:pointer">
+              <div class="settings-row-left">
+                <span class="settings-row-icon">🗑️</span>
+                <div>
+                  <p class="settings-row-label">Clear Search History</p>
+                  <p class="settings-row-sub">Remove all recent checks</p>
+                </div>
+              </div>
+              <span class="settings-chevron">›</span>
+            </div>
+            <div class="settings-row" onclick="showIntro()" style="cursor:pointer">
+              <div class="settings-row-left">
+                <span class="settings-row-icon">🎬</span>
+                <div>
+                  <p class="settings-row-label">Show App Intro</p>
+                  <p class="settings-row-sub">Replay the onboarding slides</p>
+                </div>
+              </div>
+              <span class="settings-chevron">›</span>
+            </div>
+            <div class="settings-row">
+              <div class="settings-row-left">
+                <span class="settings-row-icon">🔒</span>
+                <div>
+                  <p class="settings-row-label">Privacy</p>
+                  <p class="settings-row-sub">All data stays on your device</p>
+                </div>
+              </div>
+              <span class="settings-badge-green">Local</span>
+            </div>
+          </div>
+
+          <!-- About -->
+          <p class="settings-section-label">About</p>
+          <div class="settings-group">
+            <div class="settings-row">
+              <div class="settings-row-left">
+                <span class="settings-row-icon">📱</span>
+                <div>
+                  <p class="settings-row-label">App Version</p>
+                  <p class="settings-row-sub">NetPaySense v2.0</p>
+                </div>
+              </div>
+            </div>
+            <div class="settings-row">
+              <div class="settings-row-left">
+                <span class="settings-row-icon">⭐</span>
+                <div>
+                  <p class="settings-row-label">Rate the App</p>
+                  <p class="settings-row-sub">Tell us what you think</p>
+                </div>
+              </div>
+              <span class="settings-chevron">›</span>
+            </div>
+            <div class="settings-row">
+              <div class="settings-row-left">
+                <span class="settings-row-icon">📧</span>
+                <div>
+                  <p class="settings-row-label">Contact Support</p>
+                  <p class="settings-row-sub">Get help or report a bug</p>
+                </div>
+              </div>
+              <span class="settings-chevron">›</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- AI Smart Advisor FAB -->
     <button class="ai-fab" id="ai-fab" onclick="openAiPanel()">
       <img src="https://api.dicebear.com/7.x/bottts/svg?seed=netpay" alt="AI" />
     </button>
 
-    <!-- AI Assistant Panel (Global Floating Modal) -->
+    <!-- Scroll to Top FAB -->
+    <button class="scroll-top-btn hidden" id="scroll-top-btn" onclick="scrollToTop()">↑</button>
+
+    <!-- AI Assistant Panel -->
     <div class="ai-panel hidden" id="ai-panel">
       <div class="ai-header">
         <div class="ai-header-left">
@@ -32,7 +209,6 @@
         </div>
         <button class="ai-close" onclick="closeAiPanel()" style="display:block">✕</button>
       </div>
-
       <div class="ai-chat-body" id="ai-chat-body">
         <div class="ai-suggestions">
           <p class="ai-suggest-title">💡 Network Boosting Suggestions</p>
@@ -44,7 +220,6 @@
         </div>
         <div class="ai-msg ai">Hi! Your payment risk is high right now. How can I assist you?</div>
       </div>
-
       <div class="ai-chat-input-wrap">
         <div class="ai-quick-replies">
           <button onclick="sendAiMsg('Why did my payment fail?')">Why did my payment fail?</button>
@@ -61,7 +236,10 @@
     <header class="header" id="app-header">
       <div class="header-inner">
         <div class="logo">NetPay<span class="accent">Sense</span></div>
-        <span class="header-sub">Network &amp; UPI Checker</span>
+        <div class="header-actions">
+          <span class="header-sub">Network &amp; UPI Checker</span>
+          <button class="header-settings-btn" onclick="openSettings()" title="Settings">⚙️</button>
+        </div>
       </div>
     </header>
 
@@ -74,10 +252,22 @@
           <p class="welcome-sub">Check your current location's network reliability</p>
         </div>
 
-        <!-- Get Location Button -->
         <button class="next-btn" id="geo-btn" onclick="getMyLocation()">📍 Get My Location</button>
 
-        <!-- Location Result -->
+        <!-- Skeleton loader (shown while fetching) -->
+        <div class="skeleton-card hidden" id="skeleton-loc">
+          <div class="skeleton-line w60"></div>
+          <div class="skeleton-line w40"></div>
+        </div>
+        <div class="skeleton-card hidden" id="skeleton-net">
+          <div class="skeleton-line w80"></div>
+          <div class="skeleton-grid">
+            <div class="skeleton-box"></div>
+            <div class="skeleton-box"></div>
+            <div class="skeleton-box"></div>
+          </div>
+        </div>
+
         <div class="card hidden" id="dash-loc-card">
           <div class="card-label"><span class="label-dot blue"></span> Current Location</div>
           <p class="loc-name" id="dash-loc-name">Fetching location...</p>
@@ -86,7 +276,6 @@
           </div>
         </div>
 
-        <!-- Network Status -->
         <div class="card hidden" id="dash-network-card">
           <div class="card-title-row">
             <span class="card-title-icon">📶</span>
@@ -108,11 +297,15 @@
           </div>
         </div>
 
-        <!-- Payment Reliability -->
         <div class="card hidden" id="dash-pay-card">
           <div class="card-title-row">
             <span class="card-title-icon">💳</span>
             <span class="card-title">Payment Reliability</span>
+          </div>
+          <!-- Risk Meter Gauge -->
+          <div class="risk-meter-wrap">
+            <canvas id="risk-gauge" width="200" height="110"></canvas>
+            <div class="risk-meter-label" id="risk-meter-label">—</div>
           </div>
           <div class="reliability-row">
             <div class="reliability-score" id="dash-score">—</div>
@@ -128,29 +321,39 @@
           </div>
         </div>
 
+        <!-- Network History Sparkline -->
+        <div class="card hidden" id="dash-history-card">
+          <div class="card-title-row" style="margin-bottom:10px">
+            <span class="card-title-icon">📈</span>
+            <span class="card-title">Signal History</span>
+          </div>
+          <div class="sparkline-wrap">
+            <canvas id="sparkline-canvas" height="60"></canvas>
+          </div>
+          <p class="sparkline-label">Last 5 checks</p>
+        </div>
 
-
-        <!-- Check New Location -->
         <button class="next-btn" onclick="goToLocationChecker()"
           style="background:linear-gradient(135deg,#0ea5e9,#2563eb)">
           🔍 Check New Location
         </button>
+        <button class="next-btn"
+          onclick="switchDashboardTab('dash-bank', document.querySelector('[data-tab=dash-bank]'))"
+          style="background:linear-gradient(135deg,#0ea5e9,#2563eb)">
+          🏦 Check Bank Status
+        </button>
       </div>
-
-
 
       <!-- Smart Network Map View -->
       <div class="step-panel hidden" id="dash-map">
         <div class="card" style="padding:0; overflow:hidden; border-radius:18px;">
-          <div style="padding: 16px; background: white; z-index: 10; position:relative;">
+          <div style="padding: 16px; background: var(--card-bg); z-index: 10; position:relative;">
             <div class="card-title-row" style="margin:0;">
               <span class="card-title-icon">🗺️</span><span class="card-title">Smart Network Map</span>
             </div>
           </div>
           <div style="height: 380px; position: relative;">
-            <!-- Real Map Container -->
             <div id="real-map" style="width: 100%; height: 100%; z-index: 1;"></div>
-
             <div
               style="position:absolute; bottom:20px; left:20px; background:white; padding:12px; border-radius:16px; width:calc(100% - 40px); box-shadow:0 4px 12px rgba(0,0,0,0.1); z-index: 1000;">
               <span style="font-size:1.2rem;">🚶</span> <b>Move 50m</b> ➔ Better network
@@ -159,6 +362,39 @@
         </div>
       </div>
 
+      <!-- Bank Server Status Panel -->
+      <div class="step-panel hidden" id="dash-bank">
+        <div class="welcome-block" style="padding-top:8px">
+          <h1 class="welcome-title" style="font-size:1.1rem">🏦 Check Bank Server Status</h1>
+          <p class="welcome-sub">Select a bank to view its live UPI server status</p>
+        </div>
+        <div class="card">
+          <div class="card-label" style="margin-bottom:12px"><span class="label-dot blue"></span> Select Bank</div>
+          <div class="bank-select-wrap">
+            <select id="bank-select" onchange="showBankStatus()" class="bank-dropdown">
+              <option value="">Choose Bank</option>
+              <option value="SBI">State Bank of India (SBI)</option>
+              <option value="HDFC">HDFC Bank</option>
+              <option value="ICICI">ICICI Bank</option>
+              <option value="PNB">Punjab National Bank</option>
+              <option value="BOB">Bank of Baroda</option>
+              <option value="CANARA">Canara Bank</option>
+              <option value="AXIS">Axis Bank</option>
+              <option value="UNION">Union Bank of India</option>
+              <option value="INDIAN">Indian Bank</option>
+              <option value="BOI">Bank of India</option>
+            </select>
+            <span class="bank-select-arrow">▼</span>
+          </div>
+        </div>
+        <div class="card hidden fade-in" id="bank-status-card">
+          <div class="bank-status-title" id="bank-status-title"></div>
+          <div class="divider" style="margin-top:12px"></div>
+          <div class="bank-status-rows" id="bank-status-rows"></div>
+          <div class="divider"></div>
+          <div class="bank-overall-status" id="bank-overall-status"></div>
+        </div>
+      </div>
     </div>
 
     <main class="main hidden" id="app-main">
@@ -176,10 +412,15 @@
           <button id="check-btn" onclick="runCheck()">Check</button>
         </div>
 
-        <!-- Recents -->
         <div id="recents-section" class="hidden">
           <p class="section-label">🕐 Recently Checked</p>
           <div class="recents-list" id="recents-list"></div>
+        </div>
+
+        <!-- Empty state — shown when no recents -->
+        <div class="empty-state" id="empty-state">
+          <div class="empty-illustration">🔍</div>
+          <p class="empty-text">Enter a location to get started</p>
         </div>
       </div>
 
@@ -204,7 +445,6 @@
       <div class="step-panel hidden" id="panel-3">
         <p class="step-label">Results</p>
 
-        <!-- Location -->
         <div class="card">
           <div class="card-label"><span class="label-dot blue"></span> Location Detected</div>
           <p class="loc-name" id="loc-name">—</p>
@@ -213,37 +453,17 @@
           </div>
         </div>
 
-        <!-- Signal -->
+        <!-- Risk Meter on Results -->
         <div class="card">
-          <div class="card-title-row">
-            <span class="card-title-icon">📶</span>
-            <span class="card-title">Signal Status</span>
+          <div class="card-title-row" style="margin-bottom:8px">
+            <span class="card-title-icon">🎯</span>
+            <span class="card-title">Payment Risk Meter</span>
           </div>
-          <div class="signal-main">
-            <div class="bars-wrap">
-              <div class="bar-col" id="bar1">
-                <div class="bar-fill"></div>
-              </div>
-              <div class="bar-col" id="bar2">
-                <div class="bar-fill"></div>
-              </div>
-              <div class="bar-col" id="bar3">
-                <div class="bar-fill"></div>
-              </div>
-              <div class="bar-col" id="bar4">
-                <div class="bar-fill"></div>
-              </div>
-              <div class="bar-col" id="bar5">
-                <div class="bar-fill"></div>
-              </div>
-            </div>
-            <div class="signal-info">
-              <p class="signal-quality" id="sig-quality">—</p>
-              <p class="signal-dbm" id="sig-dbm">—</p>
-            </div>
+          <div class="risk-meter-wrap">
+            <canvas id="results-risk-gauge" width="200" height="110"></canvas>
+            <div class="risk-meter-label" id="results-risk-label">—</div>
           </div>
-          <div class="divider"></div>
-          <div class="upi-row">
+          <div class="upi-row" style="margin-top:12px">
             <div class="upi-icon-wrap" id="upi-icon-wrap"><span id="upi-icon">⚠️</span></div>
             <div class="upi-text">
               <p class="upi-label">UPI Success Chance</p>
@@ -253,77 +473,98 @@
           </div>
         </div>
 
-
-
-        <div class="nav-btns">
-          <button class="back-btn" onclick="goStep(1)">← Back</button>
-          <button class="next-btn" onclick="goStep(4)">Recommendations →</button>
-        </div>
-      </div>
-
-      <!-- ── STEP 4: Recommendations ── -->
-      <div class="step-panel hidden" id="panel-4">
-        <p class="step-label">Recommendations</p>
         <div class="card">
           <div class="rec-header-bar"><span>💡</span> Recommendations</div>
           <ul class="rec-list" id="rec-list"></ul>
         </div>
 
-
-
-        <div class="nav-btns">
-          <button class="back-btn" onclick="goStep(3)">← Back</button>
-          <button class="next-btn" onclick="goStep(5)">Bank Status →</button>
-        </div>
-      </div>
-
-      <!-- ── STEP 5: Bank Status ── -->
-      <div class="step-panel hidden" id="panel-5">
-        <p class="step-label">Bank Server Status</p>
         <div class="card">
-          <div class="card-title-row">
+          <div class="card-title-row" style="margin-bottom:12px">
             <span class="card-title-icon">🏦</span>
-            <span class="card-title">Live Bank Servers</span>
+            <span class="card-title">Bank Server Status</span>
           </div>
-          <div class="search-card bank-search">
-            <span class="search-icon">🔍</span>
-            <input id="bank-input" type="text" placeholder="Search for a bank..." oninput="filterBanks()" />
+          <div class="bank-select-wrap">
+            <select id="results-bank-select" onchange="showResultsBankStatus()" class="bank-dropdown">
+              <option value="">Choose Bank</option>
+              <option value="SBI">State Bank of India (SBI)</option>
+              <option value="HDFC">HDFC Bank</option>
+              <option value="ICICI">ICICI Bank</option>
+              <option value="PNB">Punjab National Bank</option>
+              <option value="BOB">Bank of Baroda</option>
+              <option value="CANARA">Canara Bank</option>
+              <option value="AXIS">Axis Bank</option>
+              <option value="UNION">Union Bank of India</option>
+              <option value="INDIAN">Indian Bank</option>
+              <option value="BOI">Bank of India</option>
+            </select>
+            <span class="bank-select-arrow">▼</span>
           </div>
-          <div class="bank-list-header">
-             <span>Bank Name</span>
-             <div class="bank-status-labels">
-               <span>UPI</span>
-               <span>IMPS</span>
-             </div>
-          </div>
-          <div class="bank-list" id="bank-list">
-            <!-- Populated by JS -->
+          <div class="hidden" id="results-bank-status">
+            <div class="bank-status-title" id="results-bank-title" style="margin-top:16px"></div>
+            <div class="divider" style="margin:10px 0"></div>
+            <div class="bank-status-rows" id="results-bank-rows"></div>
+            <div class="divider"></div>
+            <div class="bank-overall-status" id="results-bank-overall"></div>
           </div>
         </div>
 
         <div class="nav-btns">
-          <button class="back-btn" onclick="goStep(4)">← Back</button>
-          <button class="next-btn" onclick="goStep(6)">Feedback →</button>
+          <button class="back-btn" onclick="goStep(1)">← Back</button>
+          <button class="next-btn" onclick="goStep(4)">Feedback →</button>
         </div>
       </div>
 
-      <!-- ── STEP 6: Feedback ── -->
-      <div class="step-panel hidden" id="panel-6">
+      <!-- ── STEP 4: Feedback ── -->
+      <div class="step-panel hidden" id="panel-4">
         <p class="step-label">Feedback</p>
-        <div class="card feedback-card">
-          <div class="feedback-icon">💬</div>
-          <p class="feedback-q">Was the payment successful?</p>
-          <div class="feedback-btns" id="feedback-btns">
-            <button class="fb-btn yes" onclick="submitFeedback('yes')">👍 Yes</button>
-            <button class="fb-btn no" onclick="submitFeedback('no')">👎 No</button>
+        <div class="card feedback-card" id="feedback-main">
+          <div id="fb-outcome-section">
+            <p class="feedback-q">How did your payment go?</p>
+            <div class="fb-outcome-grid">
+              <button class="fb-outcome-btn" onclick="selectOutcome('success', this)">
+                <span class="fb-outcome-icon">✅</span><span>Successful</span>
+              </button>
+              <button class="fb-outcome-btn" onclick="selectOutcome('failed', this)">
+                <span class="fb-outcome-icon">❌</span><span>Failed</span>
+              </button>
+              <button class="fb-outcome-btn" onclick="selectOutcome('pending', this)">
+                <span class="fb-outcome-icon">⏳</span><span>Pending</span>
+              </button>
+            </div>
           </div>
-          <div class="feedback-thanks hidden" id="feedback-thanks">
-            <p class="thanks-text" id="thanks-text">—</p>
-            <button class="next-btn reset-btn" onclick="resetApp()">🔄 Check Another Location</button>
+          <div id="fb-reason-section" class="hidden">
+            <div class="divider" style="margin:16px 0"></div>
+            <p class="feedback-q" style="font-size:0.9rem">What went wrong?</p>
+            <div class="fb-chips">
+              <button class="fb-chip" onclick="selectChip(this)">Poor Signal</button>
+              <button class="fb-chip" onclick="selectChip(this)">Timeout</button>
+              <button class="fb-chip" onclick="selectChip(this)">Bank Server Down</button>
+              <button class="fb-chip" onclick="selectChip(this)">Wrong UPI ID</button>
+              <button class="fb-chip" onclick="selectChip(this)">Other</button>
+            </div>
           </div>
+          <div id="fb-rating-section" class="hidden">
+            <div class="divider" style="margin:16px 0"></div>
+            <p class="feedback-q" style="font-size:0.9rem">Rate your experience</p>
+            <div class="fb-stars" id="fb-stars">
+              <span class="fb-star" onclick="selectStar(1)">★</span>
+              <span class="fb-star" onclick="selectStar(2)">★</span>
+              <span class="fb-star" onclick="selectStar(3)">★</span>
+              <span class="fb-star" onclick="selectStar(4)">★</span>
+              <span class="fb-star" onclick="selectStar(5)">★</span>
+            </div>
+            <button class="next-btn" onclick="submitFeedbackNew()" style="margin-top:18px">Submit Feedback</button>
+          </div>
+        </div>
+        <div class="card feedback-card hidden" id="feedback-thanks-card">
+          <div class="fb-thanks-icon" id="fb-thanks-icon">🎉</div>
+          <p class="feedback-q" id="fb-thanks-title">Thank you!</p>
+          <p class="fb-thanks-tip" id="fb-thanks-tip">—</p>
+          <button class="next-btn reset-btn" onclick="resetApp()" style="margin-top:18px">🔄 Check Another
+            Location</button>
         </div>
         <div class="nav-btns" id="back-from-5">
-          <button class="back-btn" onclick="goStep(5)">← Back</button>
+          <button class="back-btn" onclick="goStep(3)">← Back</button>
         </div>
       </div>
 
@@ -331,16 +572,16 @@
 
     <!-- Bottom Navigation -->
     <div class="bottom-nav" id="bottom-nav">
-      <div class="nav-item active" onclick="switchDashboardTab('dash-content', this)">
+      <div class="nav-item active" data-tab="dash-content" onclick="switchDashboardTab('dash-content', this)">
         <span class="nav-item-icon">🏠</span><span>Home</span>
       </div>
-
-      <div class="nav-item" onclick="switchDashboardTab('dash-map', this)">
+      <div class="nav-item" data-tab="dash-map" onclick="switchDashboardTab('dash-map', this)">
         <span class="nav-item-icon">🗺️</span><span>Map</span>
       </div>
+      <div class="nav-item" data-tab="dash-bank" onclick="switchDashboardTab('dash-bank', this)">
+        <span class="nav-item-icon">🏦</span><span>Banks</span>
+      </div>
     </div>
-
-
 
   </div>
   <script src="app.js"></script>
