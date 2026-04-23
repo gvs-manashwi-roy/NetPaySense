@@ -12,12 +12,19 @@ import geopandas as gpd
 from shapely.geometry import Point
 from scipy.spatial import KDTree
 from pathlib import Path
+import tower
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 MODEL_PATH = BASE_DIR / "models"
 DATA_PATH = BASE_DIR / "data"
 FRONTEND_DIR = BASE_DIR / "Frontend"
 
+OPENCELL_API_KEY = os.getenv("OPENCELL_API_KEY")
+print("API_KEY:",OPENCELL_API_KEY)
 
 app = FastAPI(title="NetPaySense API")
 
@@ -39,26 +46,6 @@ def isInKarnataka(lat: float, lon: float) -> bool:
     point = Point(lon, lat)
     return karnataka.geometry.contains(point).any()
 
-# ----------- NEW: OPERATOR PERFORMANCE -----------
-def get_operator_performance(lat, lon):
-    return {
-        "Jio": {"signal": -70, "latency": 80},
-        "Airtel": {"signal": -85, "latency": 120},
-        "Vi": {"signal": -95, "latency": 200}
-    }
-
-def suggest_best_operator(operators):
-    best = None
-    best_score = -999
-
-    for op, values in operators.items():
-        score = values["signal"] - values["latency"]
-
-        if score > best_score:
-            best_score = score
-            best = op
-
-    return best
 
 # ----------- MODEL -----------
 class OoklaNN(nn.Module):
@@ -197,8 +184,9 @@ async def predict(req: PredictionRequest):
             m2_quality = None
 
         # ----------- NEW FEATURE -----------
-        operators = get_operator_performance(req.lat, req.lon)
-        best_operator = suggest_best_operator(operators)
+
+        nearest_tower_at_lat_lon = tower.find_nearest_tower(req.lat, req.lon, OPENCELL_API_KEY)
+        best_operator = nearest_tower_at_lat_lon["operator"]
 
         ui_data = get_ui_data(final_quality)
 

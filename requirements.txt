@@ -10,3 +10,5 @@ torchvision
 imbalanced-learn
 geopandas
 shapely
+python-dotenv
+requests
