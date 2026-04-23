@@ -353,8 +353,9 @@ async function runAnalyzing(raw, btn) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ lat, lon })
     });
+    if (!res.ok) throw new Error(`Server Error: ${res.status}`);
     const data = await res.json();
-    lastNetworkScore = parseFloat(data.upi.match(/\d+/) || 90); // Save for bank logic
+    lastNetworkScore = parseFloat(data.upi.match(/\d+/) || 90); 
 
     currentSig = {
       tier: data.tier,
@@ -372,7 +373,12 @@ async function runAnalyzing(raw, btn) {
       document.getElementById('loc-coords').textContent = `${data.lat.toFixed(4)}, ${data.lon.toFixed(4)}`;
       populateSignal(currentSig);
       populateRecs(currentSig.tier);
-      showResultsBankStatus(); // <-- NEW: Auto-show bank status
+      showResultsBankStatus();
+      
+      const alertBanner = document.getElementById('community-alert-banner');
+      if (data.community_alert) alertBanner.classList.remove('hidden');
+      else alertBanner.classList.add('hidden');
+
       saveRecent(raw, { lat: data.lat, lng: data.lon }, currentSig);
       btn.textContent = 'Check'; btn.disabled = false;
       goStep(3);
@@ -393,6 +399,7 @@ async function runAnalyzingWithCoords(name, lat, lng, btn) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ lat, lon: lng })
     });
+    if (!res.ok) throw new Error(`Server Error: ${res.status}`);
     const data = await res.json();
 
     currentSig = {
@@ -409,7 +416,12 @@ async function runAnalyzingWithCoords(name, lat, lng, btn) {
       document.getElementById('loc-coords').textContent = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
       populateSignal(currentSig);
       populateRecs(currentSig.tier);
-      showResultsBankStatus(); // <-- NEW: Auto-show bank status
+      showResultsBankStatus();
+      
+      const alertBanner = document.getElementById('community-alert-banner');
+      if (data.community_alert) alertBanner.classList.remove('hidden');
+      else alertBanner.classList.add('hidden');
+
       saveRecent(name, { lat, lng }, currentSig);
       btn.textContent = 'Check'; btn.disabled = false;
       goStep(3);
@@ -453,6 +465,13 @@ function populateRecs(tier) {
 }
 
 function saveRecent(name, coords, sig) {
+  // Store specifically for feedback / reinforcement learning
+  localStorage.setItem('last_check_data', JSON.stringify({
+    lat: coords.lat,
+    lng: coords.lng,
+    metrics: sig.metrics || {} // Assuming metrics are attached to sig or passed
+  }));
+
   recents = recents.filter(r => r.name.toLowerCase() !== name.toLowerCase());
   recents.unshift({ name, lat: coords.lat, lng: coords.lng, tier: sig.tier, badge: sig.badge });
   if (recents.length > 5) recents = recents.slice(0, 5);
@@ -567,9 +586,9 @@ function renderBankCardLive(bank, titleId, rowsId, overallId) {
     "PNB": "pnbindia.in",
     "BOB": "bankofbaroda.in",
     "CANARA": "canarabank.com",
-    "UNION": "unionbankofindia.co.in",
-    "INDIAN": "indianbank.in",
-    "BOI": "bankofindia.co.in"
+    "AIRTEL": "airtel.in",
+    "KOTAK": "kotak.com",
+    "AU": "aubank.in"
   };
   
   const domain = logos[displayName];
@@ -586,31 +605,33 @@ function renderBankCardLive(bank, titleId, rowsId, overallId) {
     </div>
   `;
   
-  const isOk = (bank.status === 'Online' || bank.status === 'success');
-  const statusText = bank.status || "Online";
-  const uptime = bank.up || 99.9;
-  const latency = bank.latency || 45;
+  let statusEmoji = '✅';
+  let statusDesc = 'Server UP';
+  let statusColorClass = 'bank-row-ok';
+
+  const s = (bank.status || "").toLowerCase();
+  if (s.includes('fluct') || s.includes('slow') || s.includes('warn')) {
+    statusEmoji = '⚠️';
+    statusDesc = 'Server Fluctuating';
+    statusColorClass = 'bank-row-warn';
+  } else if (s.includes('down') || s.includes('off') || s.includes('fail')) {
+    statusEmoji = '❌';
+    statusDesc = 'Server DOWN';
+    statusColorClass = 'bank-row-danger';
+  }
 
   document.getElementById(rowsId).innerHTML = `
-    <div class="bank-status-row">
-      <span class="bank-row-icon">${isOk ? '✅' : '⚠️'}</span>
-      <span class="bank-row-label">UPI Transactions:</span>
-      <span class="bank-row-val ${isOk ? 'bank-row-ok' : 'bank-row-warn'}">${statusText}</span>
-    </div>
-    <div class="bank-status-row">
-      <span class="bank-row-icon">🕒</span>
-      <span class="bank-row-label">Uptime:</span>
-      <span class="bank-row-val">${uptime}%</span>
-    </div>
-    <div class="bank-status-row">
-      <span class="bank-row-icon">⚡</span>
-      <span class="bank-row-label">Latency:</span>
-      <span class="bank-row-val">${latency}ms</span>
+    <div class="bank-status-row" style="margin-top:4px">
+      <span class="bank-row-icon" style="font-size:1.2rem">${statusEmoji}</span>
+      <span class="bank-row-label" style="font-size:0.95rem; font-weight:600">UPI Server Status:</span>
+      <span class="bank-row-val ${statusColorClass}" style="font-size:0.95rem">${statusDesc}</span>
     </div>
   `;
+  
   const overall = document.getElementById(overallId);
-  overall.textContent = isOk ? 'All Services Operational' : 'Minor Delays / Offline';
-  overall.className = `bank-overall-status ${isOk ? 'ok' : 'warn'}`;
+  overall.textContent = statusDesc === 'Server UP' ? 'All Services Operational' : 
+                        statusDesc === 'Server DOWN' ? 'Critical Downtime Detected' : 'Network Instability Detected';
+  overall.className = `bank-overall-status ${statusColorClass === 'bank-row-ok' ? 'ok' : 'warn'}`;
 }
 
 // ── Feedback ──
@@ -639,11 +660,30 @@ function selectStar(n) {
   document.querySelectorAll('.fb-star').forEach((s, i) => s.classList.toggle('active', i < n));
 }
 
-function submitFeedbackNew() {
+async function submitFeedbackNew() {
   if (!fbOutcome) return;
+
+  // Continuous Learning / RL Data Submission
+  const lastCheck = JSON.parse(localStorage.getItem('last_check_data')) || {};
+  const feedbackData = {
+    lat: lastCheck.lat || 0,
+    lon: lastCheck.lng || 0,
+    outcome: fbOutcome,
+    metrics: lastCheck.metrics || {}
+  };
+
+  try {
+    await fetch('http://localhost:8000/feedback', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(feedbackData)
+    });
+    console.log("Feedback recorded for community alerts.");
+  } catch (e) { console.error("Feedback submission error", e); }
+
   const tips = {
     success: '🎉 Great! Glad it went through. Keep checking signal before big payments.',
-    failed: '🙏 Sorry about that. Try switching to WiFi or moving to a better signal area.',
+    failed: '🙏 Sorry about that. We have recorded this to warn other users in this area.',
     pending: '⏳ Pending payments usually resolve in 10–15 mins. Check your bank app.',
   };
   document.getElementById('feedback-main').classList.add('hidden');

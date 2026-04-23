@@ -6,6 +6,9 @@ from pydantic import BaseModel
 import torch
 import torch.nn as nn
 import joblib
+import os
+import json
+from datetime import datetime, timedelta
 import pandas as pd
 import numpy as np
 import geopandas as gpd
@@ -118,6 +121,12 @@ class BankPredictionRequest(BaseModel):
     lon: float
     network_score: float = 90.0 # Fallback if not provided
 
+class FeedbackRequest(BaseModel):
+    lat: float
+    lon: float
+    outcome: str # success, failed, pending
+    metrics: dict
+
 # ----------- UI LOGIC -----------
 def get_ui_data(quality_score):
     if quality_score == 2:
@@ -174,13 +183,13 @@ async def predict(req: PredictionRequest):
         authentic_lon = float(nearest['lon'])
 
         # Model 1
-        m1_features = np.array([[
+        m1_features = pd.DataFrame([[
             nearest['download_mbps'],
             nearest['upload_mbps'],
             nearest['latency_ms'],
             authentic_lat,
             authentic_lon
-        ]])
+        ]], columns=['download_mbps', 'upload_mbps', 'latency_ms', 'lat', 'lon'])
         m1_scaled = ookla_scaler.transform(m1_features)
 
         with torch.no_grad():
@@ -214,7 +223,7 @@ async def predict(req: PredictionRequest):
             "type": ui_data["type"],
             "recommendation": ui_data["rec"],
             "confidence": f"{(final_quality + 1) * 30}%", 
-            "best_network": best_operator,   # ✅ NEW
+            "best_network": best_operator,
             "network_quality": {
                 "ookla": ["Poor", "Moderate", "Good"][m1_quality],
                 "signal": ["Poor", "Moderate", "Good"][m2_quality] if m2_quality is not None else "N/A"
@@ -222,7 +231,8 @@ async def predict(req: PredictionRequest):
             "metrics": {
                 "download": f"{nearest['download_mbps']:.2f} Mbps",
                 "latency": f"{nearest['latency_ms']:.1f} ms"
-            }
+            },
+            "community_alert": check_nearby_failures(authentic_lat, authentic_lon)
         }
 
     except Exception as e:
@@ -284,6 +294,70 @@ async def bank_predict(req: BankPredictionRequest):
         "success_rate": success_label,
         "final_score": round(final_score, 1)
     }
+
+# ----------- COMMUNITY FEEDBACK & RL -----------
+FEEDBACK_FILE = "feedback_data.csv"
+
+def get_all_feedback():
+    if not os.path.exists(FEEDBACK_FILE): return []
+    try:
+        df = pd.read_csv(FEEDBACK_FILE)
+        # Convert timestamp strings back to datetime objects for easy math
+        df['timestamp'] = pd.to_datetime(df['timestamp'])
+        return df
+    except Exception as e:
+        print(f"Error reading CSV: {e}")
+        return pd.DataFrame()
+
+def save_feedback_record(record):
+    file_exists = os.path.exists(FEEDBACK_FILE)
+    
+    # Flatten metrics or store as JSON string for CSV compatibility
+    if isinstance(record.get("metrics"), dict):
+        record["metrics"] = json.dumps(record["metrics"])
+        
+    df = pd.DataFrame([record])
+    df.to_csv(FEEDBACK_FILE, mode='a', index=False, header=not file_exists)
+
+def check_nearby_failures(lat, lon, radius_km=0.5): # Increased to 500m for testing
+    try:
+        df = get_all_feedback()
+        if df.empty: return False
+        
+        now = datetime.now()
+        failed_df = df[df['outcome'] == 'failed'].copy()
+        if failed_df.empty: return False
+        
+        failed_df['timestamp'] = pd.to_datetime(failed_df['timestamp'], errors='coerce')
+        failed_df = failed_df.dropna(subset=['timestamp'])
+        
+        time_threshold = now - timedelta(minutes=15)
+        recent_failed = failed_df[failed_df['timestamp'] >= time_threshold]
+        
+        print(f"DEBUG: Analyzing {len(recent_failed)} recent failures near ({lat:.4f}, {lon:.4f})")
+        
+        for _, row in recent_failed.iterrows():
+            r_lat, r_lon = float(row['lat']), float(row['lon'])
+            dist = ((r_lat - lat)**2 + (r_lon - lon)**2)**0.5 * 111
+            
+            # Log every check so we can see the gap
+            print(f"   > Found failure at ({r_lat:.4f}, {r_lon:.4f}) - Distance: {dist*1000:.1f} meters")
+            
+            if dist <= radius_km:
+                print(f"DEBUG: MATCH FOUND within {radius_km*1000}m!")
+                return True
+                
+        return False
+    except Exception as e:
+        print(f"COMMUNITY ALERT ERROR: {e}")
+        return False
+
+@app.post("/feedback")
+async def submit_feedback(req: FeedbackRequest):
+    record = req.dict()
+    record["timestamp"] = datetime.now().isoformat()
+    save_feedback_record(record)
+    return {"status": "recorded"}
 
 # ----------- FRONTEND -----------
 app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="static")

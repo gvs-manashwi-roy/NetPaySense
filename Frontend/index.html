@@ -264,16 +264,16 @@
           <div class="bank-select-wrap">
             <select id="bank-select" onchange="selectPaymentBank()" class="bank-dropdown">
               <option value="">Choose Bank</option>
-              <option value="SBI">State Bank of India (SBI)</option>
-              <option value="HDFC">HDFC Bank</option>
-              <option value="ICICI">ICICI Bank</option>
               <option value="PNB">Punjab National Bank</option>
-              <option value="BOB">Bank of Baroda</option>
-              <option value="CANARA">Canara Bank</option>
+              <option value="HDFC">HDFC Bank</option>
               <option value="AXIS">Axis Bank</option>
-              <option value="UNION">Union Bank of India</option>
-              <option value="INDIAN">Indian Bank</option>
-              <option value="BOI">Bank of India</option>
+              <option value="BOB">Bank of Baroda</option>
+              <option value="AIRTEL">Airtel Payments Bank</option>
+              <option value="CANARA">Canara Bank</option>
+              <option value="ICICI">ICICI Bank</option>
+              <option value="KOTAK">Kotak Mahindra Bank</option>
+              <option value="SBI">State Bank of India</option>
+              <option value="AU">AU Small Finance Bank</option>
             </select>
             <span class="bank-select-arrow">▼</span>
           </div>
@@ -399,16 +399,16 @@
           <div class="bank-select-wrap">
             <select id="bank-select" onchange="showBankStatus()" class="bank-dropdown">
               <option value="">Choose Bank</option>
-              <option value="SBI">State Bank of India (SBI)</option>
-              <option value="HDFC">HDFC Bank</option>
-              <option value="ICICI">ICICI Bank</option>
               <option value="PNB">Punjab National Bank</option>
-              <option value="BOB">Bank of Baroda</option>
-              <option value="CANARA">Canara Bank</option>
+              <option value="HDFC">HDFC Bank</option>
               <option value="AXIS">Axis Bank</option>
-              <option value="UNION">Union Bank of India</option>
-              <option value="INDIAN">Indian Bank</option>
-              <option value="BOI">Bank of India</option>
+              <option value="BOB">Bank of Baroda</option>
+              <option value="AIRTEL">Airtel Payments Bank</option>
+              <option value="CANARA">Canara Bank</option>
+              <option value="ICICI">ICICI Bank</option>
+              <option value="KOTAK">Kotak Mahindra Bank</option>
+              <option value="SBI">State Bank of India</option>
+              <option value="AU">AU Small Finance Bank</option>
             </select>
             <span class="bank-select-arrow">▼</span>
           </div>
@@ -469,6 +469,14 @@
 
       <!-- ── STEP 3: Results ── -->
       <div class="step-panel hidden" id="panel-3">
+        <!-- Community Alert Banner -->
+        <div id="community-alert-banner" class="community-alert-card hidden">
+          <div class="alert-icon">🚨</div>
+          <div class="alert-text">
+            <strong>Community Alert!</strong>
+            <p>Recent payment failures reported nearby.</p>
+          </div>
+        </div>
         <p class="step-label">Results</p>
 
         <div class="card">

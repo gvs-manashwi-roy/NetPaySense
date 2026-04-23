@@ -253,6 +253,7 @@ body {
 .bank-row-val { font-weight: 700; }
 .bank-row-ok { color: #16a34a; }
 .bank-row-warn { color: #d97706; }
+.bank-row-danger { color: #dc2626; }
 .bank-overall-status { font-size: 0.9rem; font-weight: 700; padding: 10px 14px; border-radius: 10px; }
 .bank-overall-status.ok { color: #15803d; background: #dcfce7; }
 .bank-overall-status.warn { color: #92400e; background: #fef9c3; }
@@ -369,3 +370,24 @@ body {
   .spinner { width: 80px; height: 80px; }
   .analyzing-steps { max-width: 360px; }
 }
+
+.community-alert-card {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: white;
+  padding: 16px;
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 14px;
+  box-shadow: 0 8px 20px rgba(239, 68, 68, 0.25);
+  animation: alertShake 0.5s ease-in-out;
+}
+@keyframes alertShake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-5px); }
+  40%, 80% { transform: translateX(5px); }
+}
+.alert-icon { font-size: 1.8rem; }
+.alert-text strong { display: block; font-size: 1.05rem; margin-bottom: 2px; }
+.alert-text p { font-size: 0.85rem; opacity: 0.95; line-height: 1.4; }
