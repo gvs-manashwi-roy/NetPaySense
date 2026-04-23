@@ -1,84 +1,76 @@
-<<<<<<< HEAD
-# 🚀 NetPaySense: AI-Powered Network Quality & Payment Risk Predictor
+# 🛰️ NetPaySense: AI-Powered UPI Reliability Checker
 
-![Signal Strength](https://img.shields.io/badge/Signal-Excellent-brightgreen)
-![Risk Level](https://img.shields.io/badge/Risk-Low-blue)
-![Python](https://img.shields.io/badge/Python-3.8+-yellow)
-![FastAPI](https://img.shields.io/badge/FastAPI-Modern-success)
-
-**NetPaySense** is a state-of-the-art solution designed to bridge the gap between telecom network performance and digital payment reliability. By leveraging real-time signal metrics and historical Ookla performance data, NetPaySense predicts whether a UPI payment is likely to succeed at a specific location.
+**NetPaySense** is a real-time diagnostic tool designed to predict the success probability of UPI payments. It combines **Machine Learning (XGBoost/Neural Networks)** with **Live Bank Server Status** to help users decide if it's safe to proceed with a payment at their current location.
 
 ---
 
-## ✨ Features
-
-- **Live Signal Analysis**: Real-time evaluation of RSRP, RSRQ, and SNR metrics.
-- **Geospatial Intelligence**: Uses Nearest-Neighbor search on thousands of Ookla data tiles to find the most accurate local network coverage.
-- **Dual-Model Hybrid**:
-    - **Model 1 (Ookla NN)**: A Deep Neural Network predicting regional quality from massive datasets.
-    - **Model 2 (Signal XGB)**: An XGBoost classifier for precise, device-level signal assessment.
-- **Premium Frontend**: A sleek, reactive dashboard with live maps, signal bars, and dynamic risk badges.
+## 🚀 Key Features
+- **AI Network Prediction**: Uses trained models to analyze signal strength, latency, and download speeds to predict network quality.
+- **Smart Bank Selection**: Choose your payment bank once, and get tailored success rates for that specific bank's server.
+- **Real-Time GPS Integration**: Instantly fetch your live coordinates and area name to run local diagnostics.
+- **Dynamic Risk Meter**: A visual gauge that shows "High," "Moderate," or "Low" risk based on combined network and bank data.
+- **Privacy First**: Designed for local diagnostics with clear data transparency.
 
 ---
 
-## 🛠️ Tech Stack
-
-- **Backend**: FastAPI, Uvicorn, Python
-- **Machine Learning**: PyTorch (Neural Networks), XGBoost, Scikit-learn
-- **Frontend**: Vanilla JavaScript, HTML5, CSS3 (Glassmorphism UI)
-- **Data Engineering**: Pandas, KDTree for geospatial lookups
+## 🛠️ Technology Stack
+- **Backend**: [FastAPI](https://fastapi.tiangolo.com/) (Python)
+- **AI/ML**: [XGBoost](https://xgboost.readthedocs.io/), [PyTorch](https://pytorch.org/), [Scikit-learn](https://scikit-learn.org/)
+- **Frontend**: Vanilla JavaScript, CSS3 (Modern Glassmorphism Design), HTML5
+- **Mapping**: [Leaflet.js](https://leafletjs.com/) & OpenStreetMap
 
 ---
 
-## 🚀 How to Execute
+## 📦 Installation & Setup
 
-### 1. Prerequisites
-Ensure you have Python 3.8 or higher installed on your system.
-
-### 2. Installation
-Clone the repository and install the required dependencies:
+### 1. Clone the Repository
 ```bash
-# Clone the repository
 git clone https://github.com/gvs-manashwi-roy/NetPaySense.git
 cd NetPaySense
-
-# Install dependencies
-pip install -r requirements.txt
 ```
 
-### 3. Data Setup
-> [!IMPORTANT]
-> The large data files (`final_dataset.csv`, `.parquet` files) are excluded from the repository. Ensure `final_dataset.csv` is present in the root directory for the app to function.
-
-### 4. Running the Application
-Start the NetPaySense engine:
+### 2. Set Up Virtual Environment (Recommended)
 ```bash
-python main.py
+python -m venv .venv
+# On Windows:
+.venv\Scripts\activate
+# On Mac/Linux:
+source .venv/bin/activate
 ```
-The server will start at `http://localhost:8000`.
 
-### 5. Using the UI
-Open your browser and navigate to `http://localhost:8000`. You will see the interactive dashboard where you can input location coordinates and signal metrics to get instant predictions.
-
----
-
-## 📁 Project Structure
-
-- `main.py`: Main entry point (FastAPI server + Logic).
-- `models/`: Pre-trained PyTorch and XGBoost models.
-- `Frontend/NetPaySense-main/`: Web dashboard source code.
-- `requirements.txt`: Project dependencies.
-- `preprocessing/`: Scripts for data cleaning and model training (optional to run).
+### 3. Install Dependencies
+```bash
+pip install fastapi uvicorn xgboost scikit-learn torch pydantic
+```
 
 ---
 
-## 🤝 Contributing
-Contributions are welcome! Please open an issue or submit a pull request for any improvements.
+## 🏃 How to Run
+
+1. **Start the FastAPI Server**:
+   ```bash
+   python -m uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
+   ```
+2. **Open the App**:
+   Navigate to **[http://localhost:8000](http://localhost:8000)** in your browser.
 
 ---
 
-*Developed for the Future of Secure and Reliable Digital Payments.*
-=======
-# NetPaySense
-AI-powered payment reliability prediction system using network intelligence
->>>>>>> frontend-update
+## 🔌 API Endpoints
+- `POST /predict`: Sends network parameters to the AI model for quality prediction.
+- `POST /bank-predict`: Combines network scores with bank server status (UP/FLUCTUATING/DOWN) for a final success rate.
+- `GET /banks`: Fetches the current list of supported banks and their simulated live status.
+- `GET /docs`: Interactive Swagger UI for testing all endpoints.
+
+---
+
+## 🧠 Model Logic (Combined Score)
+The final **UPI Success Chance** is calculated using a multiplier based on the bank's health:
+- **UP**: 100% of the Network Score.
+- **FLUCTUATING**: 60% of the Network Score (40% penalty).
+- **DOWN**: Forced to **1.5%** success rate (High Risk).
+
+---
+
+## 🤝 Contributors
+*Developed with ❤️ by the NetPaySense Team.*
