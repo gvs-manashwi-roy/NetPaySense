@@ -264,11 +264,17 @@ function hash(str) {
 
 // ── Location & Check ──
 function goToLocationChecker() {
+  // Hide bank dropdown when switching to checker
+  document.getElementById('dash-bank-dropdown')?.classList.add('hidden');
+  
   document.getElementById('dashboard-panel').classList.add('hidden');
   document.getElementById('app-main').classList.remove('hidden');
 }
 
 function getMyLocation() {
+  // Hide bank dropdown when starting GPS fetch
+  document.getElementById('dash-bank-dropdown')?.classList.add('hidden');
+  
   const btn = document.getElementById('geo-btn');
   btn.textContent = '⏳ Fetching...';
   btn.disabled = true;
@@ -298,7 +304,7 @@ function getMyLocation() {
 
 function useLiveLocation(lat, lng, name) {
   const btn = document.getElementById('geo-btn');
-  btn.textContent = '📍 Get My Location';
+  btn.textContent = '📍 Fetch My Location';
   btn.disabled = false;
   document.getElementById('skeleton-loc').classList.add('hidden');
   document.getElementById('skeleton-net').classList.add('hidden');
@@ -309,6 +315,9 @@ function useLiveLocation(lat, lng, name) {
 }
 
 function runCheck() {
+  // Hide bank dropdown when starting check
+  document.getElementById('dash-bank-dropdown')?.classList.add('hidden');
+
   const raw = document.getElementById('loc-input').value.trim();
   if (!raw) { shake(document.getElementById('loc-input')); return; }
   const btn = document.getElementById('check-btn');
@@ -330,87 +339,83 @@ function runCheckWithCoords(name, lat, lng) {
 async function runAnalyzing(raw, btn) {
   animateSteps();
   
-  // 1. Geocode the typed location name → lat/lon
-  let lat, lon;
   try {
-    const geoRes = await fetch(
-      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(raw)}&format=json&limit=1`
-    );
+    // 1. Geocode
+    const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(raw)}&format=json&limit=1`);
     const geoData = await geoRes.json();
-    if (!geoData.length) {
-      alert('Location not found. Try a more specific name.');
-      btn.textContent = 'Check'; btn.disabled = false;
-      goStep(1); return;
-    }
-    lat = parseFloat(geoData[0].lat);
-    lon = parseFloat(geoData[0].lon);
-  } catch {
-    alert('Could not geocode location.');
-    btn.textContent = 'Check'; btn.disabled = false;
-    goStep(1); return;
-  }
+    if (!geoData.length) throw new Error('Location not found');
+    const lat = parseFloat(geoData[0].lat);
+    const lon = parseFloat(geoData[0].lon);
 
-  // 2. Call the Real Backend
-  await fetchAndPopulate(raw, lat, lon, btn);
-}
-
-async function runAnalyzingWithCoords(name, lat, lng, btn) {
-  animateSteps();
-  await fetchAndPopulate(name, lat, lng, btn);
-}
-
-async function fetchAndPopulate(name, lat, lon, btn) {
-  try {
+    // 2. Predict
     const res = await fetch('http://localhost:8000/predict', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ lat, lon })
     });
     const data = await res.json();
+    lastNetworkScore = parseFloat(data.upi.match(/\d+/) || 90); // Save for bank logic
 
-    if (!res.ok) {
-      alert(data.message || 'Error from server.');
-      btn.textContent = 'Check'; btn.disabled = false;
-      goStep(1); return;
-    }
-
-    // Map backend response → UI expectations
     currentSig = {
       tier: data.tier,
       label: data.label,
       upi: data.upi,
       badge: data.badge,
       dbm: data.dbm,
-      type: data.type,
-      metrics: data.metrics
+      type: data.type
     };
-
     currentLat = data.lat;
     currentLng = data.lon;
 
-    // Small delay to let the "analyzing" animations look nice
     setTimeout(() => {
-      // Update Results Panel (panel-3)
-      document.getElementById('loc-name').textContent = name;
+      document.getElementById('loc-name').textContent = raw;
       document.getElementById('loc-coords').textContent = `${data.lat.toFixed(4)}, ${data.lon.toFixed(4)}`;
-      
-      // Update Home Dashboard Panel (dashboard-panel)
-      const dashLoc = document.getElementById('dash-loc-name');
-      const dashCoords = document.getElementById('dash-loc-coords');
-      if (dashLoc) dashLoc.textContent = name;
-      if (dashCoords) dashCoords.textContent = `${data.lat.toFixed(4)}, ${data.lon.toFixed(4)}`;
-      
       populateSignal(currentSig);
       populateRecs(currentSig.tier);
-      saveRecent(name, { lat: data.lat, lng: data.lon }, currentSig);
-      
+      showResultsBankStatus(); // <-- NEW: Auto-show bank status
+      saveRecent(raw, { lat: data.lat, lng: data.lon }, currentSig);
       btn.textContent = 'Check'; btn.disabled = false;
       goStep(3);
     }, 1500);
 
   } catch (err) {
-    console.error(err);
-    alert('Backend unreachable. Is the server running?');
+    alert(err.message || 'Error connecting to backend');
+    btn.textContent = 'Check'; btn.disabled = false;
+    goStep(1);
+  }
+}
+
+async function runAnalyzingWithCoords(name, lat, lng, btn) {
+  animateSteps();
+  try {
+    const res = await fetch('http://localhost:8000/predict', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ lat, lon: lng })
+    });
+    const data = await res.json();
+
+    currentSig = {
+      tier: data.tier,
+      label: data.label,
+      upi: data.upi,
+      badge: data.badge,
+      dbm: data.dbm,
+      type: data.type
+    };
+
+    setTimeout(() => {
+      document.getElementById('loc-name').textContent = name;
+      document.getElementById('loc-coords').textContent = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+      populateSignal(currentSig);
+      populateRecs(currentSig.tier);
+      showResultsBankStatus(); // <-- NEW: Auto-show bank status
+      saveRecent(name, { lat, lng }, currentSig);
+      btn.textContent = 'Check'; btn.disabled = false;
+      goStep(3);
+    }, 1500);
+  } catch (err) {
+    alert('Backend Error');
     btn.textContent = 'Check'; btn.disabled = false;
     goStep(1);
   }
@@ -424,52 +429,17 @@ function animateSteps() {
 }
 
 function populateSignal(sig) {
-  // 1. Update Results Panel IDs
   const upiVal = document.getElementById('upi-value');
-  if (upiVal) {
-    upiVal.textContent = sig.upi;
-    upiVal.className = `upi-value ${sig.tier}`;
-  }
+  upiVal.textContent = sig.upi;
+  upiVal.className = `upi-value ${sig.tier}`;
   const upiWrap = document.getElementById('upi-icon-wrap');
-  if (upiWrap) {
-    upiWrap.className = `upi-icon-wrap ${sig.tier}`;
-    document.getElementById('upi-icon').textContent = sig.tier === 'good' ? '✅' : sig.tier === 'mid' ? '⚠️' : '🚨';
-  }
+  upiWrap.className = `upi-icon-wrap ${sig.tier}`;
+  document.getElementById('upi-icon').textContent = sig.tier === 'good' ? '✅' : sig.tier === 'mid' ? '⚠️' : '🚨';
   const badge = document.getElementById('upi-badge');
-  if (badge) {
-    badge.textContent = sig.badge;
-    badge.className = `upi-badge ${sig.tier}`;
-  }
-
-  // 2. Update Home Dashboard IDs
-  const dashSigQual = document.getElementById('dash-sig-quality');
-  const dashSigDbm = document.getElementById('dash-sig-dbm');
-  const dashScore = document.getElementById('dash-score');
-  const dashBar = document.getElementById('dash-bar');
-
-  if (dashSigQual) {
-    dashSigQual.textContent = sig.label;
-    dashSigQual.className = `signal-quality ${sig.tier}`;
-  }
-  if (dashSigDbm) dashSigDbm.textContent = `${sig.dbm} dBm (${sig.type})`;
-  if (dashScore) dashScore.textContent = sig.upi.split('–')[1]?.trim() || sig.upi;
-  if (dashBar) {
-    const percent = parseInt(sig.upi.match(/\d+/)) || 50;
-    dashBar.style.width = percent + '%';
-  }
-
-  // 3. Show the cards on Dashboard if they were hidden
-  document.getElementById('dash-loc-card')?.classList.remove('hidden');
-  document.getElementById('dash-network-card')?.classList.remove('hidden');
-  document.getElementById('dash-pay-card')?.classList.remove('hidden');
-  document.getElementById('dash-history-card')?.classList.remove('hidden');
-
-  // 4. Draw gauges on both screens
-  setTimeout(() => {
-    drawGauge('results-risk-gauge', 'results-risk-label', sig.tier);
-    drawGauge('risk-gauge', 'risk-meter-label', sig.tier);
-    drawSparkline();
-  }, 100);
+  badge.textContent = sig.badge;
+  badge.className = `upi-badge ${sig.tier}`;
+  // Draw gauge on results
+  setTimeout(() => drawGauge('results-risk-gauge', 'results-risk-label', sig.tier), 100);
 }
 
 function populateRecs(tier) {
@@ -541,39 +511,106 @@ document.getElementById('loc-input').addEventListener('keydown', e => {
 });
 
 // ── Bank Status ──
-function showBankStatus() {
-  const key = document.getElementById('bank-select').value;
-  const card = document.getElementById('bank-status-card');
-  if (!key) { card.classList.add('hidden'); return; }
-  renderBankCard(BANK_DATA[key], 'bank-status-title', 'bank-status-rows', 'bank-overall-status');
-  card.classList.remove('hidden');
-  void card.offsetWidth;
-  card.classList.add('fade-in');
+let selectedBank = "";
+
+function selectPaymentBank() {
+  const bank = document.getElementById('bank-select').value;
+  if (!bank) return;
+  
+  selectedBank = bank;
+  console.log("Bank Selected for future UPI check:", selectedBank);
+  // Removed auto-hide: let the user see their choice
 }
 
-function showResultsBankStatus() {
-  const key = document.getElementById('results-bank-select').value;
+let lastNetworkScore = 90.0;
+
+async function showResultsBankStatus() {
+  const key = selectedBank || "SBI"; 
   const container = document.getElementById('results-bank-status');
-  if (!key) { container.classList.add('hidden'); return; }
-  renderBankCard(BANK_DATA[key], 'results-bank-title', 'results-bank-rows', 'results-bank-overall');
-  container.classList.remove('hidden');
-  void container.offsetWidth;
-  container.classList.add('fade-in');
+  
+  try {
+    const res = await fetch('http://localhost:8000/bank-predict', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        bank: key, 
+        lat: 12.9716, 
+        lon: 77.5946,
+        network_score: lastNetworkScore
+      }) 
+    });
+    const bankData = await res.json();
+
+    renderBankCardLive(bankData, 'results-bank-title', 'results-bank-rows', 'results-bank-overall');
+    
+    // Update the main UPI Success UI with the combined final score
+    const upiVal = document.getElementById('upi-value');
+    const upiBadge = document.getElementById('upi-badge');
+    if (upiVal) upiVal.textContent = `${bankData.success_rate} – ${bankData.final_score}%`;
+    if (upiBadge) {
+      upiBadge.textContent = `${bankData.success_rate} Risk`;
+      upiBadge.className = `upi-badge ${bankData.success_rate.toLowerCase()}-risk`;
+    }
+
+    container.classList.remove('hidden');
+  } catch (e) { console.error("Bank fetch error", e); }
 }
 
-function renderBankCard(bank, titleId, rowsId, overallId) {
-  document.getElementById(titleId).textContent = `${bank.name} UPI Server Status`;
-  document.getElementById(rowsId).innerHTML = bank.rows.map(r => {
-    const ok = ['Online', 'Available', 'Active'].includes(r.status);
-    return `<div class="bank-status-row">
-      <span class="bank-row-icon">${ok ? '✅' : '⚠️'}</span>
-      <span class="bank-row-label">${r.label}:</span>
-      <span class="bank-row-val ${ok ? 'bank-row-ok' : 'bank-row-warn'}">${r.status}</span>
-    </div>`;
-  }).join('');
+function renderBankCardLive(bank, titleId, rowsId, overallId) {
+  const displayName = bank.name || bank.bank || selectedBank || "Bank";
+  
+  const logos = {
+    "SBI": "sbi.co.in",
+    "HDFC": "hdfcbank.com",
+    "ICICI": "icicibank.com",
+    "AXIS": "axisbank.com",
+    "PNB": "pnbindia.in",
+    "BOB": "bankofbaroda.in",
+    "CANARA": "canarabank.com",
+    "UNION": "unionbankofindia.co.in",
+    "INDIAN": "indianbank.in",
+    "BOI": "bankofindia.co.in"
+  };
+  
+  const domain = logos[displayName];
+  const primaryLogo = domain ? `https://logo.clearbit.com/${domain}` : `https://api.dicebear.com/7.x/initials/svg?seed=${displayName}`;
+  const fallbackLogo = `https://api.dicebear.com/7.x/initials/svg?seed=${displayName}&backgroundColor=0ea5e9&fontFamily=Arial&bold=true`;
+
+  document.getElementById(titleId).innerHTML = `
+    <div style="display:flex; align-items:center; gap:12px;">
+      <img src="${primaryLogo}" 
+           onerror="this.onerror=null; this.src='${fallbackLogo}';" 
+           alt="${displayName}" 
+           style="width:32px; height:32px; border-radius:8px; object-fit:contain; background:white; padding:2px; box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+      <span>${displayName} UPI Server Status</span>
+    </div>
+  `;
+  
+  const isOk = (bank.status === 'Online' || bank.status === 'success');
+  const statusText = bank.status || "Online";
+  const uptime = bank.up || 99.9;
+  const latency = bank.latency || 45;
+
+  document.getElementById(rowsId).innerHTML = `
+    <div class="bank-status-row">
+      <span class="bank-row-icon">${isOk ? '✅' : '⚠️'}</span>
+      <span class="bank-row-label">UPI Transactions:</span>
+      <span class="bank-row-val ${isOk ? 'bank-row-ok' : 'bank-row-warn'}">${statusText}</span>
+    </div>
+    <div class="bank-status-row">
+      <span class="bank-row-icon">🕒</span>
+      <span class="bank-row-label">Uptime:</span>
+      <span class="bank-row-val">${uptime}%</span>
+    </div>
+    <div class="bank-status-row">
+      <span class="bank-row-icon">⚡</span>
+      <span class="bank-row-label">Latency:</span>
+      <span class="bank-row-val">${latency}ms</span>
+    </div>
+  `;
   const overall = document.getElementById(overallId);
-  overall.textContent = `Status: ${bank.overall}`;
-  overall.className = `bank-overall-status ${bank.ok ? 'ok' : 'warn'}`;
+  overall.textContent = isOk ? 'All Services Operational' : 'Minor Delays / Offline';
+  overall.className = `bank-overall-status ${isOk ? 'ok' : 'warn'}`;
 }
 
 // ── Feedback ──

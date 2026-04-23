@@ -252,7 +252,44 @@
           <p class="welcome-sub">Check your current location's network reliability</p>
         </div>
 
-        <button class="next-btn" id="geo-btn" onclick="getMyLocation()">📍 Get My Location</button>
+        <!-- 1. Choose Bank -->
+        <button class="next-btn" onclick="document.getElementById('dash-bank-dropdown').classList.toggle('hidden')"
+          style="background:linear-gradient(135deg,#0ea5e9,#2563eb)">
+          🏦 Choose Bank
+        </button>
+
+        <div id="dash-bank-dropdown" class="hidden"
+          style="margin-top:10px; background:rgba(0,0,0,0.03); border-radius:12px; padding:12px; margin-bottom:10px;">
+          <div class="card-label" style="margin-bottom:8px; font-size:0.8rem;">Select your payment bank</div>
+          <div class="bank-select-wrap">
+            <select id="bank-select" onchange="selectPaymentBank()" class="bank-dropdown">
+              <option value="">Choose Bank</option>
+              <option value="SBI">State Bank of India (SBI)</option>
+              <option value="HDFC">HDFC Bank</option>
+              <option value="ICICI">ICICI Bank</option>
+              <option value="PNB">Punjab National Bank</option>
+              <option value="BOB">Bank of Baroda</option>
+              <option value="CANARA">Canara Bank</option>
+              <option value="AXIS">Axis Bank</option>
+              <option value="UNION">Union Bank of India</option>
+              <option value="INDIAN">Indian Bank</option>
+              <option value="BOI">Bank of India</option>
+            </select>
+            <span class="bank-select-arrow">▼</span>
+          </div>
+        </div>
+
+        <!-- 2. Check New Location -->
+        <button class="next-btn" onclick="goToLocationChecker()"
+          style="background:linear-gradient(135deg,#0ea5e9,#2563eb); margin-bottom:12px;">
+          🔍 Check New Location
+        </button>
+
+        <!-- 3. Fetch My Location -->
+        <button class="next-btn" id="geo-btn" onclick="getMyLocation()"
+          style="background:linear-gradient(135deg,#0ea5e9,#2563eb); margin-bottom:20px;">
+          📍 Fetch My Location
+        </button>
 
         <!-- Skeleton loader (shown while fetching) -->
         <div class="skeleton-card hidden" id="skeleton-loc">
@@ -268,6 +305,7 @@
           </div>
         </div>
 
+        <!-- Result Cards (Hidden by default) -->
         <div class="card hidden" id="dash-loc-card">
           <div class="card-label"><span class="label-dot blue"></span> Current Location</div>
           <p class="loc-name" id="dash-loc-name">Fetching location...</p>
@@ -302,7 +340,6 @@
             <span class="card-title-icon">💳</span>
             <span class="card-title">Payment Reliability</span>
           </div>
-          <!-- Risk Meter Gauge -->
           <div class="risk-meter-wrap">
             <canvas id="risk-gauge" width="200" height="110"></canvas>
             <div class="risk-meter-label" id="risk-meter-label">—</div>
@@ -321,7 +358,6 @@
           </div>
         </div>
 
-        <!-- Network History Sparkline -->
         <div class="card hidden" id="dash-history-card">
           <div class="card-title-row" style="margin-bottom:10px">
             <span class="card-title-icon">📈</span>
@@ -332,16 +368,6 @@
           </div>
           <p class="sparkline-label">Last 5 checks</p>
         </div>
-
-        <button class="next-btn" onclick="goToLocationChecker()"
-          style="background:linear-gradient(135deg,#0ea5e9,#2563eb)">
-          🔍 Check New Location
-        </button>
-        <button class="next-btn"
-          onclick="switchDashboardTab('dash-bank', document.querySelector('[data-tab=dash-bank]'))"
-          style="background:linear-gradient(135deg,#0ea5e9,#2563eb)">
-          🏦 Check Bank Status
-        </button>
       </div>
 
       <!-- Smart Network Map View -->
@@ -453,6 +479,20 @@
           </div>
         </div>
 
+        <div class="card">
+          <div class="card-title-row" style="margin-bottom:12px">
+            <span class="card-title-icon">🏦</span>
+            <span class="card-title">Bank Server Status</span>
+          </div>
+          <div id="results-bank-status">
+            <div class="bank-status-title" id="results-bank-title" style="margin-top:0"></div>
+            <div class="divider" style="margin:10px 0"></div>
+            <div class="bank-status-rows" id="results-bank-rows"></div>
+            <div class="divider"></div>
+            <div class="bank-overall-status" id="results-bank-overall"></div>
+          </div>
+        </div>
+
         <!-- Risk Meter on Results -->
         <div class="card">
           <div class="card-title-row" style="margin-bottom:8px">
@@ -476,36 +516,6 @@
         <div class="card">
           <div class="rec-header-bar"><span>💡</span> Recommendations</div>
           <ul class="rec-list" id="rec-list"></ul>
-        </div>
-
-        <div class="card">
-          <div class="card-title-row" style="margin-bottom:12px">
-            <span class="card-title-icon">🏦</span>
-            <span class="card-title">Bank Server Status</span>
-          </div>
-          <div class="bank-select-wrap">
-            <select id="results-bank-select" onchange="showResultsBankStatus()" class="bank-dropdown">
-              <option value="">Choose Bank</option>
-              <option value="SBI">State Bank of India (SBI)</option>
-              <option value="HDFC">HDFC Bank</option>
-              <option value="ICICI">ICICI Bank</option>
-              <option value="PNB">Punjab National Bank</option>
-              <option value="BOB">Bank of Baroda</option>
-              <option value="CANARA">Canara Bank</option>
-              <option value="AXIS">Axis Bank</option>
-              <option value="UNION">Union Bank of India</option>
-              <option value="INDIAN">Indian Bank</option>
-              <option value="BOI">Bank of India</option>
-            </select>
-            <span class="bank-select-arrow">▼</span>
-          </div>
-          <div class="hidden" id="results-bank-status">
-            <div class="bank-status-title" id="results-bank-title" style="margin-top:16px"></div>
-            <div class="divider" style="margin:10px 0"></div>
-            <div class="bank-status-rows" id="results-bank-rows"></div>
-            <div class="divider"></div>
-            <div class="bank-overall-status" id="results-bank-overall"></div>
-          </div>
         </div>
 
         <div class="nav-btns">

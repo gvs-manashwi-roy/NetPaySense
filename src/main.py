@@ -112,6 +112,12 @@ class PredictionRequest(BaseModel):
     cqi: float = None
     dbm: float = None
 
+class BankPredictionRequest(BaseModel):
+    bank: str
+    lat: float
+    lon: float
+    network_score: float = 90.0 # Fallback if not provided
+
 # ----------- UI LOGIC -----------
 def get_ui_data(quality_score):
     if quality_score == 2:
@@ -221,6 +227,63 @@ async def predict(req: PredictionRequest):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+# ----------- BANK STATUS -----------
+@app.get("/banks")
+async def get_banks():
+    return {
+        "SBI": {"name": "SBI", "status": "Online", "up": 99.8, "latency": 45},
+        "HDFC": {"name": "HDFC", "status": "Online", "up": 99.9, "latency": 32},
+        "ICICI": {"name": "ICICI", "status": "Slow", "up": 97.5, "latency": 450},
+        "AXIS": {"name": "Axis", "status": "Online", "up": 99.2, "latency": 68},
+        "PNB": {"name": "PNB", "status": "Offline", "up": 0.0, "latency": 0},
+        "Other": {"name": "Other", "status": "Online", "up": 99.0, "latency": 50}
+    }
+
+# ----------- BANK PREDICTION (COMBINED LOGIC) -----------
+@app.post("/bank-predict")
+async def bank_predict(req: BankPredictionRequest):
+    # Simulated Bank State (In the future, you'll fetch this live)
+    # We'll use a simple mock mapping for testing different states
+    bank_states = {
+        "SBI": "UP",
+        "HDFC": "FLUCTUATING",
+        "ICICI": "DOWN",
+        "AXIS": "UP",
+        "PNB": "DOWN"
+    }
+    
+    state = bank_states.get(req.bank, "UP")
+    final_score = 0.0
+    status_text = "Online"
+    success_label = "High"
+
+    if state == "UP":
+        # Depends entirely on network
+        final_score = req.network_score
+        status_text = "Online"
+    elif state == "FLUCTUATING":
+        # Reduce network score by 40%
+        final_score = req.network_score * 0.6
+        status_text = "Fluctuating"
+    else: # DOWN
+        # Forced to high risk
+        final_score = 1.5 # 1-2%
+        status_text = "Down"
+
+    # Determine label for UI
+    if final_score > 80: success_label = "High"
+    elif final_score > 50: success_label = "Moderate"
+    else: success_label = "Low"
+
+    return {
+        "name": req.bank,
+        "status": status_text,
+        "up": 99.9 if state == "UP" else (60.0 if state == "FLUCTUATING" else 0.0),
+        "latency": 45 if state == "UP" else (350 if state == "FLUCTUATING" else 0),
+        "success_rate": success_label,
+        "final_score": round(final_score, 1)
+    }
 
 # ----------- FRONTEND -----------
 app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="static")
