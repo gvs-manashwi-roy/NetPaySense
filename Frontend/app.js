@@ -1,3 +1,80 @@
+// ── Global Config ──
+const BANK_DOMAINS = {
+  "SBI": "sbi.co.in",
+  "HDFC": "hdfcbank.com",
+  "ICICI": "icicibank.com",
+  "PNB": "pnbindia.in",
+  "BOB": "bankofbaroda.in",
+  "CANARA": "canarabank.com",
+  "AXIS": "axisbank.com",
+  "AIRTEL": "airtel.in",
+  "KOTAK": "kotak.com",
+  "AU": "aubank.in"
+};
+
+const BANK_DROPDOWN_OPTIONS = [
+  { value: "", name: "Choose Bank" },
+  { value: "State Bank of India", name: "State Bank of India (SBI)" },
+  { value: "HDFC Bank", name: "HDFC Bank" },
+  { value: "ICICI Bank", name: "ICICI Bank" },
+  { value: "Punjab National Bank", name: "Punjab National Bank" },
+  { value: "Bank Of Baroda", name: "Bank of Baroda" },
+  { value: "Canara Bank", name: "Canara Bank" },
+  { value: "Axis Bank", name: "Axis Bank" },
+  { value: "Airtel Payments Bank", name: "Airtel Payments Bank" },
+  { value: "Kotak Mahindra Bank", name: "Kotak Mahindra Bank" },
+  { value: "AU Small Finance Bank", name: "AU Small Finance Bank" }
+];
+
+// ── Custom Dropdown Logic ──
+function toggleCustomDropdown() {
+  document.getElementById('custom-select-options').classList.toggle('hidden');
+}
+
+function selectCustomBank(value, name) {
+  const select = document.getElementById('bank-select');
+  if (select) select.value = value;
+
+  const displayValue = document.getElementById('custom-select-value');
+  const domain = BANK_DOMAINS[value];
+
+  if (value && domain) {
+    displayValue.innerHTML = `<span style="display:flex; align-items:center; gap:8px;">
+      <img src="https://www.google.com/s2/favicons?domain=${domain}&sz=64" class="bank-logo" onerror="this.style.display='none'"> 
+      ${name}
+    </span>`;
+  } else {
+    displayValue.innerHTML = `<span style="display:flex; align-items:center; gap:8px;">${name}</span>`;
+  }
+
+  document.getElementById('custom-select-options').classList.add('hidden');
+  selectPaymentBank(); // trigger change
+}
+
+function initCustomDropdown() {
+  const container = document.getElementById('custom-select-options');
+  if (!container) return;
+
+  container.innerHTML = BANK_DROPDOWN_OPTIONS
+    .filter(opt => opt.value !== "") // Don't show "Choose Bank" in the list
+    .map(opt => {
+      const domain = BANK_DOMAINS[opt.value];
+      const logoHtml = domain ? `<img src="https://www.google.com/s2/favicons?domain=${domain}&sz=64" class="bank-logo" onerror="this.style.display='none'">` : '';
+      return `<div class="custom-select-option" onclick="selectCustomBank('${opt.value}', '${opt.name}')">
+        ${logoHtml} ${opt.name}
+      </div>`;
+    }).join('');
+}
+
+// Close dropdown if clicked outside
+document.addEventListener('click', (e) => {
+  const wrap = document.getElementById('custom-bank-select');
+  const opts = document.getElementById('custom-select-options');
+  if (wrap && opts && !wrap.contains(e.target)) {
+    opts.classList.add('hidden');
+  }
+});
+
 // ── Theme ──
 function initTheme() {
   const saved = localStorage.getItem('nps_theme') || 'light';
@@ -71,6 +148,110 @@ function clearHistory() {
   localStorage.removeItem('nps_recents');
   renderRecents();
   closeSettings();
+}
+
+// ── Real-time Bank Status ──
+async function refreshBankStatus() {
+  try {
+    const res = await fetch('/bank-status');
+    const data = await res.json();
+
+    // Update the live bank grid in the Banks tab
+    if (data.banks) {
+      renderLiveBankGrid(data.banks, data.last_updated);
+    }
+
+    // Update BANK_DATA so results panel is also accurate
+    if (data.banks) {
+      data.banks.forEach(b => {
+        const key = Object.keys(BANK_DATA).find(k =>
+          BANK_DATA[k].name.toLowerCase().includes(b.bank.toLowerCase()) ||
+          b.bank.toLowerCase().includes(BANK_DATA[k].name.split(' ')[0].toLowerCase())
+        );
+        if (key) {
+          BANK_DATA[key].ok = b.status === 'UP';
+          BANK_DATA[key].rows = [{ label: 'UPI Transactions', status: b.status }];
+          BANK_DATA[key].overall = b.status === 'DOWN'
+            ? 'CRITICAL: Server Down'
+            : b.status === 'FLUCTUATING'
+              ? 'Warning: Fluctuating'
+              : 'All Services Operational';
+        }
+      });
+    }
+
+    // Show/hide issues banner and all-clear
+    const problematic = data.problematic_banks || [];
+    renderProblematicBanks(problematic);
+
+  } catch (err) {
+    console.error("Bank status fetch failed", err);
+    const grid = document.getElementById('live-bank-grid');
+    if (grid) grid.innerHTML = `<div class="bank-grid-loading" style="color:#ef4444">⚠️ Could not connect to backend</div>`;
+  }
+}
+
+// 🔥 Render Live Bank Status Grid
+function renderLiveBankGrid(banks, lastUpdated) {
+  const grid = document.getElementById('live-bank-grid');
+  if (!grid) return;
+
+  // Update timestamp
+  const tsEl = document.getElementById('bank-last-updated');
+  if (tsEl && lastUpdated) {
+    const d = new Date(lastUpdated);
+    tsEl.textContent = `Updated: ${d.toLocaleTimeString()}`;
+  }
+
+  if (!banks || banks.length === 0) {
+    grid.innerHTML = `<div class="bank-grid-loading">No data available yet</div>`;
+    return;
+  }
+
+  grid.innerHTML = banks.map(b => {
+    const statusClass = b.status === 'UP' ? 'status-up'
+      : b.status === 'DOWN' ? 'status-down'
+        : 'status-warn';
+    const staleNote = b.stale ? `<div style="font-size:0.6rem; opacity:0.6; margin-top:2px;">⏱ stale</div>` : '';
+
+    const domain = BANK_DOMAINS[b.bank];
+    const logoSrc = domain ? `https://www.google.com/s2/favicons?domain=${domain}&sz=128` : `https://api.dicebear.com/7.x/initials/svg?seed=${b.bank}&backgroundColor=0ea5e9`;
+    
+    return `
+      <div class="bank-grid-card fade-in">
+        <div class="bank-grid-logo-wrap">
+          <img src="${logoSrc}" onerror="this.src='https://api.dicebear.com/7.x/initials/svg?seed=${b.bank}'" alt="${b.bank}">
+        </div>
+        <span class="bank-grid-name">${b.bank}</span>
+        <span class="bank-grid-status-badge ${statusClass}">${b.status}</span>
+        ${staleNote}
+      </div>`;
+  }).join('');
+}
+
+// 🔥 Render Problematic Banks (Issues Banner)
+function renderProblematicBanks(banks) {
+  const banner = document.getElementById('bank-issues-banner');
+  const allClear = document.getElementById('bank-all-clear');
+  const container = document.getElementById('problematic-banks-list');
+
+  if (!banks || banks.length === 0) {
+    if (banner) banner.classList.add('hidden');
+    if (allClear) allClear.classList.remove('hidden');
+    return;
+  }
+
+  if (banner) banner.classList.remove('hidden');
+  if (allClear) allClear.classList.add('hidden');
+
+  if (container) {
+    container.innerHTML = banks.map(b => `
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid rgba(0,0,0,0.06)">
+        <span style="font-weight:500; font-size:0.88rem">${b.icon} ${b.bank}</span>
+        <span class="bank-issue-badge ${b.status.toLowerCase()}" style="font-size:0.75rem">${b.status}</span>
+      </div>
+    `).join('');
+  }
 }
 
 // ── Scroll to Top ──
@@ -208,15 +389,15 @@ const COORDS = [
 ];
 
 const SIGNALS = [
-  { dbm: -58, type: '5G', label: 'Excellent Signal', tier: 'good', bars: 5, upi: 'High – 96%', badge: 'Low Risk' },
-  { dbm: -65, type: '5G', label: 'Excellent Signal', tier: 'good', bars: 5, upi: 'High – 91%', badge: 'Low Risk' },
-  { dbm: -72, type: '4G', label: 'Good Signal', tier: 'good', bars: 4, upi: 'High – 84%', badge: 'Low Risk' },
-  { dbm: -80, type: '4G', label: 'Good Signal', tier: 'good', bars: 3, upi: 'Medium – 72%', badge: 'Low Risk' },
-  { dbm: -88, type: '4G', label: 'Moderate Signal', tier: 'mid', bars: 3, upi: 'Medium – 61%', badge: 'Medium Risk' },
-  { dbm: -95, type: '3G', label: 'Moderate Signal', tier: 'mid', bars: 2, upi: 'Medium – 48%', badge: 'Medium Risk' },
-  { dbm: -102, type: '4G', label: 'Poor Signal', tier: 'poor', bars: 1, upi: 'Low – 32%', badge: 'High Risk' },
-  { dbm: -110, type: '4G', label: 'Poor Signal', tier: 'poor', bars: 1, upi: 'Low – 28%', badge: 'High Risk' },
-  { dbm: -115, type: '2G', label: 'Very Poor Signal', tier: 'poor', bars: 1, upi: 'Low – 14%', badge: 'High Risk' },
+  { dbm: -58, type: '5G', label: 'Excellent Signal', tier: 'good', bars: 5, upi: 'High - 96%', badge: 'Low Risk' },
+  { dbm: -65, type: '5G', label: 'Excellent Signal', tier: 'good', bars: 5, upi: 'High - 91%', badge: 'Low Risk' },
+  { dbm: -72, type: '4G', label: 'Good Signal', tier: 'good', bars: 4, upi: 'High - 84%', badge: 'Low Risk' },
+  { dbm: -80, type: '4G', label: 'Good Signal', tier: 'good', bars: 3, upi: 'Medium - 72%', badge: 'Low Risk' },
+  { dbm: -88, type: '4G', label: 'Moderate Signal', tier: 'mid', bars: 3, upi: 'Medium - 61%', badge: 'Medium Risk' },
+  { dbm: -95, type: '3G', label: 'Moderate Signal', tier: 'mid', bars: 2, upi: 'Medium - 48%', badge: 'Medium Risk' },
+  { dbm: -102, type: '4G', label: 'Poor Signal', tier: 'poor', bars: 1, upi: 'Low - 32%', badge: 'High Risk' },
+  { dbm: -110, type: '4G', label: 'Poor Signal', tier: 'poor', bars: 1, upi: 'Low - 28%', badge: 'High Risk' },
+  { dbm: -115, type: '2G', label: 'Very Poor Signal', tier: 'poor', bars: 1, upi: 'Low - 14%', badge: 'High Risk' },
 ];
 
 const RECS = {
@@ -228,13 +409,13 @@ const RECS = {
   ],
   mid: [
     { icon: '🔄', text: '<strong>Switch to Jio</strong> for better network stability' },
-    { icon: '⏱️', text: '<strong>Wait 10–15 minutes</strong> and retry the payment' },
+    { icon: '⏱️', text: '<strong>Wait 10-15 minutes</strong> and retry the payment' },
     { icon: '💵', text: '<strong>Carry Cash as Backup</strong> in case payment fails' },
   ],
   poor: [
     { icon: '🔄', text: '<strong>Switch to Vi / BSNL</strong> for better coverage here' },
-    { icon: '⏱️', text: '<strong>Wait 10–15 minutes</strong> and retry the payment' },
-    { icon: '💵', text: '<strong>Carry Cash as Backup</strong> — payments likely to fail' },
+    { icon: '⏱️', text: '<strong>Wait 10-15 minutes</strong> and retry the payment' },
+    { icon: '💵', text: '<strong>Carry Cash as Backup</strong> - payments likely to fail' },
   ],
 };
 
@@ -348,7 +529,7 @@ async function runAnalyzing(raw, btn) {
     const lon = parseFloat(geoData[0].lon);
 
     // 2. Predict
-    const res = await fetch('http://localhost:8000/predict', {
+    const res = await fetch('/predict', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ lat, lon })
@@ -356,32 +537,40 @@ async function runAnalyzing(raw, btn) {
     if (!res.ok) throw new Error(`Server Error: ${res.status}`);
     const data = await res.json();
     lastNetworkScore = parseFloat(data.upi.match(/\d+/) || 90); 
-
     currentSig = {
       tier: data.tier,
       label: data.label,
       upi: data.upi,
       badge: data.badge,
       dbm: data.dbm,
-      type: data.type
+      type: data.type,
+      metrics: data.metrics
     };
     currentLat = data.lat;
     currentLng = data.lon;
 
     setTimeout(() => {
-      document.getElementById('loc-name').textContent = raw;
-      document.getElementById('loc-coords').textContent = `${data.lat.toFixed(4)}, ${data.lon.toFixed(4)}`;
-      populateSignal(currentSig);
-      populateRecs(currentSig.tier);
-      showResultsBankStatus();
-      
-      const alertBanner = document.getElementById('community-alert-banner');
-      if (data.community_alert) alertBanner.classList.remove('hidden');
-      else alertBanner.classList.add('hidden');
+      try {
+        document.getElementById('loc-name').textContent = raw;
+        document.getElementById('loc-coords').textContent = `${data.lat.toFixed(4)}, ${data.lon.toFixed(4)}`;
+        populateSignal(currentSig);
+        populateRecs(currentSig.tier);
+        showResultsBankStatus();
+        
+        const alertBanner = document.getElementById('community-alert-banner');
+        if (alertBanner) {
+          if (data.community_alert) alertBanner.classList.remove('hidden');
+          else alertBanner.classList.add('hidden');
+        }
 
-      saveRecent(raw, { lat: data.lat, lng: data.lon }, currentSig);
-      btn.textContent = 'Check'; btn.disabled = false;
-      goStep(3);
+        saveRecent(raw, { lat: data.lat, lng: data.lon }, currentSig);
+        btn.textContent = 'Check'; btn.disabled = false;
+        goStep(3);
+      } catch (innerErr) {
+        console.error("Transition error:", innerErr);
+        btn.textContent = 'Check'; btn.disabled = false;
+        goStep(1);
+      }
     }, 1500);
 
   } catch (err) {
@@ -394,7 +583,7 @@ async function runAnalyzing(raw, btn) {
 async function runAnalyzingWithCoords(name, lat, lng, btn) {
   animateSteps();
   try {
-    const res = await fetch('http://localhost:8000/predict', {
+    const res = await fetch('/predict', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ lat, lon: lng })
@@ -408,23 +597,32 @@ async function runAnalyzingWithCoords(name, lat, lng, btn) {
       upi: data.upi,
       badge: data.badge,
       dbm: data.dbm,
-      type: data.type
+      type: data.type,
+      metrics: data.metrics
     };
 
     setTimeout(() => {
-      document.getElementById('loc-name').textContent = name;
-      document.getElementById('loc-coords').textContent = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
-      populateSignal(currentSig);
-      populateRecs(currentSig.tier);
-      showResultsBankStatus();
-      
-      const alertBanner = document.getElementById('community-alert-banner');
-      if (data.community_alert) alertBanner.classList.remove('hidden');
-      else alertBanner.classList.add('hidden');
+      try {
+        document.getElementById('loc-name').textContent = name;
+        document.getElementById('loc-coords').textContent = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+        populateSignal(currentSig);
+        populateRecs(currentSig.tier);
+        showResultsBankStatus();
+        
+        const alertBanner = document.getElementById('community-alert-banner');
+        if (alertBanner) {
+          if (data.community_alert) alertBanner.classList.remove('hidden');
+          else alertBanner.classList.add('hidden');
+        }
 
-      saveRecent(name, { lat, lng }, currentSig);
-      btn.textContent = 'Check'; btn.disabled = false;
-      goStep(3);
+        saveRecent(name, { lat, lng }, currentSig);
+        btn.textContent = 'Check'; btn.disabled = false;
+        goStep(3);
+      } catch (innerErr) {
+        console.error("Transition error:", innerErr);
+        btn.textContent = 'Check'; btn.disabled = false;
+        goStep(1);
+      }
     }, 1500);
   } catch (err) {
     alert('Backend Error');
@@ -544,28 +742,45 @@ function selectPaymentBank() {
 let lastNetworkScore = 90.0;
 
 async function showResultsBankStatus() {
-  const key = selectedBank || "SBI"; 
+  const key = selectedBank || "SBI";
   const container = document.getElementById('results-bank-status');
-  
+
+  // Get live icon from already-fetched bank grid data
+  let liveIcon = '✅';
+  let liveStatus = 'UP';
   try {
-    const res = await fetch('http://localhost:8000/bank-predict', {
+    const statusRes = await fetch('/bank-status');
+    const statusData = await statusRes.json();
+    if (statusData.banks) {
+      const match = statusData.banks.find(b =>
+        b.bank.toLowerCase().includes(key.toLowerCase()) ||
+        key.toLowerCase().includes(b.bank.toLowerCase())
+      );
+      if (match) { liveIcon = match.icon; liveStatus = match.status; }
+    }
+  } catch (_) { }
+
+  try {
+    const res = await fetch('/bank-predict', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        bank: key, 
-        lat: 12.9716, 
+      body: JSON.stringify({
+        bank: key,
+        lat: 12.9716,
         lon: 77.5946,
         network_score: lastNetworkScore
-      }) 
+      })
     });
     const bankData = await res.json();
+    bankData._liveIcon = liveIcon;
+    bankData._liveStatus = liveStatus;
 
     renderBankCardLive(bankData, 'results-bank-title', 'results-bank-rows', 'results-bank-overall');
-    
+
     // Update the main UPI Success UI with the combined final score
     const upiVal = document.getElementById('upi-value');
     const upiBadge = document.getElementById('upi-badge');
-    if (upiVal) upiVal.textContent = `${bankData.success_rate} – ${bankData.final_score}%`;
+    if (upiVal) upiVal.textContent = `${bankData.success_rate} - ${bankData.final_score}%`;
     if (upiBadge) {
       upiBadge.textContent = `${bankData.success_rate} Risk`;
       upiBadge.className = `upi-badge ${bankData.success_rate.toLowerCase()}-risk`;
@@ -577,61 +792,57 @@ async function showResultsBankStatus() {
 
 function renderBankCardLive(bank, titleId, rowsId, overallId) {
   const displayName = bank.name || bank.bank || selectedBank || "Bank";
-  
-  const logos = {
-    "SBI": "sbi.co.in",
-    "HDFC": "hdfcbank.com",
-    "ICICI": "icicibank.com",
-    "AXIS": "axisbank.com",
-    "PNB": "pnbindia.in",
-    "BOB": "bankofbaroda.in",
-    "CANARA": "canarabank.com",
-    "AIRTEL": "airtel.in",
-    "KOTAK": "kotak.com",
-    "AU": "aubank.in"
-  };
-  
-  const domain = logos[displayName];
-  const primaryLogo = domain ? `https://logo.clearbit.com/${domain}` : `https://api.dicebear.com/7.x/initials/svg?seed=${displayName}`;
+
+  // Live status icon from CSV data (attached by showResultsBankStatus)
+  const liveIcon = bank._liveIcon || '✅';
+  const liveStatus = bank._liveStatus || 'UP';
+
+  const domain = BANK_DOMAINS[displayName];
+  const primaryLogo = domain ? `https://www.google.com/s2/favicons?domain=${domain}&sz=128` : `https://api.dicebear.com/7.x/initials/svg?seed=${displayName}`;
   const fallbackLogo = `https://api.dicebear.com/7.x/initials/svg?seed=${displayName}&backgroundColor=0ea5e9&fontFamily=Arial&bold=true`;
+
+  // Icon style based on live status
+  const iconBg = liveStatus === 'UP' ? '#dcfce7'
+    : liveStatus === 'DOWN' ? '#fee2e2' : '#fef9c3';
+  const iconColor = liveStatus === 'UP' ? '#15803d'
+    : liveStatus === 'DOWN' ? '#b91c1c' : '#92400e';
 
   document.getElementById(titleId).innerHTML = `
     <div style="display:flex; align-items:center; gap:12px;">
-      <img src="${primaryLogo}" 
-           onerror="this.onerror=null; this.src='${fallbackLogo}';" 
-           alt="${displayName}" 
+      <img src="${primaryLogo}"
+           onerror="this.onerror=null; this.src='${fallbackLogo}';"
+           alt="${displayName}"
            style="width:32px; height:32px; border-radius:8px; object-fit:contain; background:white; padding:2px; box-shadow:0 2px 4px rgba(0,0,0,0.1);">
-      <span>${displayName} UPI Server Status</span>
+      <span style="flex:1; font-weight:700; font-size:0.95rem;">${displayName} UPI Server Status</span>
+      <div style="
+        width:44px; height:44px; border-radius:50%;
+        background:${iconBg};
+        display:flex; align-items:center; justify-content:center;
+        font-size:1.5rem;
+        box-shadow:0 2px 8px ${iconBg};
+        animation:fadeUp 0.4s ease;
+        flex-shrink:0;
+      " title="${liveStatus}">${liveIcon}</div>
     </div>
   `;
-  
-  let statusEmoji = '✅';
-  let statusDesc = 'Server UP';
-  let statusColorClass = 'bank-row-ok';
 
-  const s = (bank.status || "").toLowerCase();
-  if (s.includes('fluct') || s.includes('slow') || s.includes('warn')) {
-    statusEmoji = '⚠️';
-    statusDesc = 'Server Fluctuating';
-    statusColorClass = 'bank-row-warn';
-  } else if (s.includes('down') || s.includes('off') || s.includes('fail')) {
-    statusEmoji = '❌';
-    statusDesc = 'Server DOWN';
-    statusColorClass = 'bank-row-danger';
-  }
+  // Use live status for row icon
+  const rowIcon = liveStatus === 'UP' ? '✅' : liveStatus === 'DOWN' ? '❌' : '⚠️';
+  const rowClass = liveStatus === 'UP' ? 'bank-row-ok' : 'bank-row-warn';
+  const statusText = liveStatus === 'UP' ? 'Online'
+    : liveStatus === 'DOWN' ? 'Down' : 'Fluctuating';
+  const uptime = bank.up || (liveStatus === 'UP' ? 99.9 : liveStatus === 'FLUCTUATING' ? 60.0 : 0.0);
+  const latency = bank.latency || (liveStatus === 'UP' ? 45 : liveStatus === 'FLUCTUATING' ? 350 : 0);
 
-  document.getElementById(rowsId).innerHTML = `
-    <div class="bank-status-row" style="margin-top:4px">
-      <span class="bank-row-icon" style="font-size:1.2rem">${statusEmoji}</span>
-      <span class="bank-row-label" style="font-size:0.95rem; font-weight:600">UPI Server Status:</span>
-      <span class="bank-row-val ${statusColorClass}" style="font-size:0.95rem">${statusDesc}</span>
-    </div>
-  `;
-  
+  document.getElementById(rowsId).innerHTML = '';
+
   const overall = document.getElementById(overallId);
-  overall.textContent = statusDesc === 'Server UP' ? 'All Services Operational' : 
-                        statusDesc === 'Server DOWN' ? 'Critical Downtime Detected' : 'Network Instability Detected';
-  overall.className = `bank-overall-status ${statusColorClass === 'bank-row-ok' ? 'ok' : 'warn'}`;
+  const isOk = liveStatus === 'UP';
+  const isDown = liveStatus === 'DOWN';
+  overall.textContent = isOk ? '✅ All Services Operational'
+    : isDown ? '❌ Server Currently Down'
+      : '⚠️ Minor Delays / Fluctuating';
+  overall.className = `bank-overall-status ${isOk ? 'ok' : isDown ? 'down' : 'warn'}`;
 }
 
 // ── Feedback ──
@@ -673,7 +884,7 @@ async function submitFeedbackNew() {
   };
 
   try {
-    await fetch('http://localhost:8000/feedback', {
+    await fetch('/feedback', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(feedbackData)
@@ -684,7 +895,7 @@ async function submitFeedbackNew() {
   const tips = {
     success: '🎉 Great! Glad it went through. Keep checking signal before big payments.',
     failed: '🙏 Sorry about that. We have recorded this to warn other users in this area.',
-    pending: '⏳ Pending payments usually resolve in 10–15 mins. Check your bank app.',
+    pending: '⏳ Pending payments usually resolve in 10-15 mins. Check your bank app.',
   };
   document.getElementById('feedback-main').classList.add('hidden');
   document.getElementById('back-from-5').classList.add('hidden');
@@ -792,3 +1003,6 @@ initTheme();
 initOnboarding();
 initScrollTop();
 renderRecents();
+initCustomDropdown();
+refreshBankStatus();
+setInterval(refreshBankStatus, 60000); // every minute

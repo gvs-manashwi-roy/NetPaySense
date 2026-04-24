@@ -258,6 +258,31 @@ body {
 .bank-overall-status.ok { color: #15803d; background: #dcfce7; }
 .bank-overall-status.warn { color: #92400e; background: #fef9c3; }
 
+/* ── Custom Select ── */
+.custom-select-wrap { position: relative; width: 100%; user-select: none; }
+.custom-select-trigger {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 16px; background: var(--card-bg);
+  border: 1.5px solid #bfdbfe; border-radius: 12px;
+  cursor: pointer; font-weight: 600; color: var(--input-color);
+  transition: all 0.2s;
+}
+.custom-select-trigger:hover { border-color: #2563eb; background: var(--dash-stat-bg); }
+.custom-select-options {
+  position: absolute; top: calc(100% + 5px); left: 0; right: 0;
+  background: var(--card-bg); border: 1px solid var(--card-border);
+  border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+  z-index: 100; max-height: 250px; overflow-y: auto;
+  animation: slideDown 0.2s ease-out;
+}
+@keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+.custom-select-option {
+  padding: 12px 16px; display: flex; align-items: center; gap: 10px;
+  cursor: pointer; transition: background 0.1s; font-size: 0.9rem;
+}
+.custom-select-option:hover { background: var(--dash-stat-bg); color: #2563eb; }
+.bank-logo { width: 20px; height: 20px; border-radius: 4px; object-fit: contain; background: white; }
+
 /* ── AI Panel ── */
 .ai-fab { position: fixed; bottom: 80px; right: 20px; width: 56px; height: 56px; background: var(--card-bg); border: 2px solid #2563eb; border-radius: 50%; box-shadow: 0 4px 15px rgba(37,99,235,0.3); display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 1001; transition: transform 0.2s; }
 .ai-fab:hover { transform: scale(1.1); }
@@ -284,6 +309,93 @@ body {
 .ai-input-row { display: flex; gap: 10px; align-items: center; background: var(--dash-stat-bg); padding: 6px; border-radius: 24px; border: 1px solid var(--card-border); }
 .ai-input-row input { flex: 1; min-width: 0; background: transparent; border: none; padding: 8px 12px; font-size: 0.95rem; outline: none; color: var(--text); }
 .ai-mic-btn { background: #2563eb; color: white; border: none; width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1.1rem; }
+
+/* ── Live Bank Grid ── */
+.live-bank-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.bank-grid-card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 20px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 10px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+.bank-grid-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 12px 24px rgba(0,0,0,0.08);
+  border-color: #2563eb;
+}
+.bank-grid-logo-wrap {
+  width: 54px;
+  height: 54px;
+  background: white;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+  padding: 6px;
+}
+.bank-grid-logo-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.bank-grid-name {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-heading);
+  line-height: 1.3;
+  height: 2.6em;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.bank-grid-status-badge {
+  font-size: 0.68rem;
+  font-weight: 800;
+  padding: 4px 10px;
+  border-radius: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.status-up { background: #dcfce7; color: #15803d; }
+.status-down { background: #fee2e2; color: #b91c1c; }
+.status-warn { background: #fef9c3; color: #92400e; }
+
+.bank-issue-badge {
+  padding: 4px 8px;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+}
+.bank-issue-badge.down { background: #fee2e2; color: #b91c1c; }
+.bank-issue-badge.fluctuating { background: #fef9c3; color: #92400e; }
+
+.bank-grid-loading {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 40px;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+@media (min-width: 400px) {
+  .live-bank-grid { grid-template-columns: repeat(3, 1fr); }
+}
 
 /* ── Scroll to Top ── */
 .scroll-top-btn { position: fixed; bottom: 80px; left: 20px; width: 42px; height: 42px; background: #2563eb; color: white; border: none; border-radius: 50%; font-size: 1.2rem; font-weight: 700; cursor: pointer; z-index: 999; box-shadow: 0 4px 12px rgba(37,99,235,0.4); transition: opacity 0.3s, transform 0.2s; }
@@ -372,22 +484,29 @@ body {
 }
 
 .community-alert-card {
-  background: linear-gradient(135deg, #ef4444, #dc2626);
-  color: white;
-  padding: 16px;
-  border-radius: 18px;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1.5px solid rgba(239, 68, 68, 0.2);
+  color: #b91c1c;
+  padding: 16px 20px;
+  border-radius: 20px;
   display: flex;
   align-items: center;
   gap: 16px;
-  margin-bottom: 14px;
-  box-shadow: 0 8px 20px rgba(239, 68, 68, 0.25);
-  animation: alertShake 0.5s ease-in-out;
+  margin-bottom: 16px;
+  backdrop-filter: blur(10px);
+  animation: alertFloat 3s ease-in-out infinite;
 }
-@keyframes alertShake {
-  0%, 100% { transform: translateX(0); }
-  20%, 60% { transform: translateX(-5px); }
-  40%, 80% { transform: translateX(5px); }
+@keyframes alertFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
 }
-.alert-icon { font-size: 1.8rem; }
-.alert-text strong { display: block; font-size: 1.05rem; margin-bottom: 2px; }
-.alert-text p { font-size: 0.85rem; opacity: 0.95; line-height: 1.4; }
+.alert-icon { 
+  font-size: 1.8rem; 
+  background: #fee2e2;
+  width: 48px; height: 48px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.alert-text strong { display: block; font-size: 1.05rem; margin-bottom: 3px; color: #991b1b; }
+.alert-text p { font-size: 0.88rem; opacity: 0.9; line-height: 1.5; }

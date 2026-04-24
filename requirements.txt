@@ -10,3 +10,7 @@ torchvision
 imbalanced-learn
 geopandas
 shapely
+apscheduler
+selenium
+scipy
+pydantic

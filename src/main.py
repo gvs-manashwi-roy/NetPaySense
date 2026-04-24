@@ -8,6 +8,7 @@ import torch.nn as nn
 import joblib
 import os
 import json
+import threading
 from datetime import datetime, timedelta
 import pandas as pd
 import numpy as np
@@ -15,6 +16,10 @@ import geopandas as gpd
 from shapely.geometry import Point
 from scipy.spatial import KDTree
 from pathlib import Path
+from apscheduler.schedulers.background import BackgroundScheduler
+
+# Import bank monitoring logic from sibling module
+from .bank_monitor import fetch_bank_health, get_bank_upi_status, get_problematic_banks, clean_old_data, CSV_FILE
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 MODEL_PATH = BASE_DIR / "models"
@@ -32,18 +37,32 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.on_event("startup")
+async def startup_event():
+    """Start the background scraper when the API starts."""
+    clean_old_data() # 🔥 Run cleanup on startup
+    
+    # Start the background scraper (Official IBA Bank Sewa)
+    scheduler = BackgroundScheduler(daemon=True)
+    scheduler.add_job(fetch_bank_health, 'interval', minutes=5) # 5 mins is safer for rate limits
+    scheduler.start()
+    
+    # Run the first scrape immediately in a separate thread so it doesn't block API startup
+    threading.Thread(target=fetch_bank_health, daemon=True).start()
+    
+    print("Background Scraper Started (Interval: 5 min)")
+
 gdf = gpd.read_file(DATA_PATH / "IndiaStatesBoundaryShapes/India_State_Boundary.shp")
-
-gdf = gdf.to_crs(epsg=4326) #  converts the format to latitude and longitude
-
+gdf = gdf.to_crs(epsg=4326) # converts to lat/lon
 karnataka = gdf[gdf["STATE"] == "KARNATAKA"]
 
 def isInKarnataka(lat: float, lon: float) -> bool:
     point = Point(lon, lat)
     return karnataka.geometry.contains(point).any()
 
-# ----------- NEW: OPERATOR PERFORMANCE -----------
+# ----------- OPERATOR PERFORMANCE -----------
 def get_operator_performance(lat, lon):
+    # Simulated operator data - in real app would use SignalStrength API or crowdsourced data
     return {
         "Jio": {"signal": -70, "latency": 80},
         "Airtel": {"signal": -85, "latency": 120},
@@ -53,17 +72,14 @@ def get_operator_performance(lat, lon):
 def suggest_best_operator(operators):
     best = None
     best_score = -999
-
     for op, values in operators.items():
         score = values["signal"] - values["latency"]
-
         if score > best_score:
             best_score = score
             best = op
-
     return best
 
-# ----------- MODEL -----------
+# ----------- ML MODELS -----------
 class OoklaNN(nn.Module):
     def __init__(self, input_size):
         super(OoklaNN, self).__init__()
@@ -78,7 +94,6 @@ class OoklaNN(nn.Module):
             nn.ReLU(),
             nn.Linear(16, 3)
         )
-
     def forward(self, x):
         return self.network(x)
 
@@ -88,7 +103,7 @@ ookla_model.load_state_dict(torch.load(MODEL_PATH / 'ookla_nn.pth'))
 ookla_model.eval()
 ookla_scaler = joblib.load(MODEL_PATH / 'ookla_scaler.pkl')
 
-# Load Model 2
+# Load Model 2 (Local Signal)
 signal_model = joblib.load(MODEL_PATH / 'signal_xgb.pkl')
 
 # Load Look-up Data for Model 1 (Nearest Neighbor search)
@@ -114,12 +129,13 @@ class PredictionRequest(BaseModel):
     snr: float = None
     cqi: float = None
     dbm: float = None
+    bank_name: str = None # User-selected bank
 
 class BankPredictionRequest(BaseModel):
     bank: str
     lat: float
     lon: float
-    network_score: float = 90.0 # Fallback if not provided
+    network_score: float = 90.0
 
 class FeedbackRequest(BaseModel):
     lat: float
@@ -128,45 +144,36 @@ class FeedbackRequest(BaseModel):
     metrics: dict
 
 # ----------- UI LOGIC -----------
-def get_ui_data(quality_score):
-    if quality_score == 2:
+def get_ui_data(quality_score, community_alert=False):
+    # Class mapping: 2:Good, 1:Mid, 0:Poor
+    
+    # Community alert significantly increases risk
+    if community_alert:
         return {
-            "tier": "good",
-            "bars": 5,
-            "dbm": -65,
-            "label": "Excellent Signal",
-            "upi": "High – 92%",
-            "badge": "Low Risk",
-            "rec": "Safe to proceed with UPI",
-            "type": "5G"
+            "tier": "poor", "bars": 1, "dbm": -105, "label": "Community Alert",
+            "upi": "Low - 10-20%", "badge": "COMMUNITY DOWNTIME", 
+            "rec": "STOP: Multiple payment failures reported here recently. Use Cash.", "type": "4G"
         }
-    elif quality_score == 1:
+
+    if quality_score >= 1.8:
         return {
-            "tier": "mid",
-            "bars": 3,
-            "dbm": -88,
-            "label": "Moderate Signal",
-            "upi": "Medium – 64%",
-            "badge": "Medium Risk",
-            "rec": "Wait or use Cash backup",
-            "type": "4G"
+            "tier": "good", "bars": 5, "dbm": -65, "label": "Excellent Signal",
+            "upi": "High - 92%", "badge": "Low Risk", "rec": "Safe to proceed with UPI", "type": "5G"
+        }
+    elif quality_score >= 0.8:
+        return {
+            "tier": "mid", "bars": 3, "dbm": -88, "label": "Moderate Signal",
+            "upi": "Medium - 64%", "badge": "Medium Risk", "rec": "Proceed with caution. WiFi preferred.", "type": "4G"
         }
     else:
         return {
-            "tier": "poor",
-            "bars": 1,
-            "dbm": -110,
-            "label": "Poor Signal",
-            "upi": "Low – 24%",
-            "badge": "High Risk",
-            "rec": "Carry Cash - Likely to fail",
-            "type": "4G"
+            "tier": "poor", "bars": 1, "dbm": -110, "label": "Poor Signal",
+            "upi": "Low - 24%", "badge": "High Risk", "rec": "Carry Cash - Likely to fail", "type": "4G"
         }
 
-# ----------- MAIN API -----------
+# ----------- MAIN PREDICTION -----------
 @app.post("/predict")
 async def predict(req: PredictionRequest):
-
     if not isInKarnataka(req.lat, req.lon):
         return JSONResponse(status_code=403, content={
             "status": "out_of_range",
@@ -175,20 +182,16 @@ async def predict(req: PredictionRequest):
         })
 
     try:
-        # KDTree nearest lookup
+        # 1. Spatial Lookup
         dist, idx = tree.query([req.lat, req.lon])
         nearest = look_up_df.iloc[idx]
-
         authentic_lat = float(nearest['lat'])
         authentic_lon = float(nearest['lon'])
 
-        # Model 1
+        # 2. Network Quality Models
         m1_features = pd.DataFrame([[
-            nearest['download_mbps'],
-            nearest['upload_mbps'],
-            nearest['latency_ms'],
-            authentic_lat,
-            authentic_lon
+            nearest['download_mbps'], nearest['upload_mbps'], nearest['latency_ms'],
+            authentic_lat, authentic_lon
         ]], columns=['download_mbps', 'upload_mbps', 'latency_ms', 'lat', 'lon'])
         m1_scaled = ookla_scaler.transform(m1_features)
 
@@ -196,7 +199,6 @@ async def predict(req: PredictionRequest):
             m1_out = ookla_model(torch.tensor(m1_scaled, dtype=torch.float32))
             m1_quality = torch.argmax(m1_out, dim=1).item()
 
-        # Model 2
         if req.rsrp is not None and req.rsrq is not None:
             m2_features = np.array([[req.rsrp, req.rsrq, req.snr or 0, req.cqi or 10, req.dbm or -90]])
             m2_quality = signal_model.predict(m2_features)[0]
@@ -205,93 +207,93 @@ async def predict(req: PredictionRequest):
             final_quality = m1_quality
             m2_quality = None
 
-        # ----------- NEW FEATURE -----------
+        # 2. Community Check
+        has_alert = check_nearby_failures(authentic_lat, authentic_lon)
+        
+        ui_data = get_ui_data(final_quality, has_alert)
         operators = get_operator_performance(req.lat, req.lon)
         best_operator = suggest_best_operator(operators)
 
-        ui_data = get_ui_data(final_quality)
+        # 3. Bank Status Override (Official Scraper Data)
+        bank_warning = None
+        if req.bank_name:
+            status, stale = get_bank_upi_status(req.bank_name)
+            if status == "DOWN":
+                ui_data["tier"] = "poor"
+                ui_data["badge"] = "CRITICAL RISK"
+                ui_data["upi"] = "Near 0% - Server Down"
+                ui_data["rec"] = f"STOP: {req.bank_name} servers are currently DOWN. Use Cash."
+                bank_warning = f"{req.bank_name} servers are offline."
+            elif status == "FLUCTUATING":
+                ui_data["badge"] = "High Risk (Bank Issues)"
+                ui_data["upi"] = "Low - 15-30%"
+                ui_data["rec"] = f"Warning: {req.bank_name} servers are unstable. Cash recommended."
+                bank_warning = f"{req.bank_name} servers are fluctuating."
 
         return {
-            "lat": authentic_lat,
-            "lon": authentic_lon,
-            "tier": ui_data["tier"],
-            "bars": ui_data["bars"],
-            "dbm": ui_data["dbm"],
-            "label": ui_data["label"],
-            "upi": ui_data["upi"],
-            "badge": ui_data["badge"],
-            "type": ui_data["type"],
-            "recommendation": ui_data["rec"],
-            "confidence": f"{(final_quality + 1) * 30}%", 
-            "best_network": best_operator,
-            "network_quality": {
-                "ookla": ["Poor", "Moderate", "Good"][m1_quality],
-                "signal": ["Poor", "Moderate", "Good"][m2_quality] if m2_quality is not None else "N/A"
-            },
-            "metrics": {
-                "download": f"{nearest['download_mbps']:.2f} Mbps",
-                "latency": f"{nearest['latency_ms']:.1f} ms"
-            },
-            "community_alert": check_nearby_failures(authentic_lat, authentic_lon)
+            "lat": authentic_lat, "lon": authentic_lon, "tier": ui_data["tier"],
+            "bars": ui_data["bars"], "dbm": ui_data["dbm"], "label": ui_data["label"],
+            "upi": ui_data["upi"], "badge": ui_data["badge"], "type": ui_data["type"],
+            "recommendation": ui_data["rec"], "confidence": f"{(final_quality + 1) * 30}%", 
+            "best_network": best_operator, "bank_warning": bank_warning,
+            "metrics": { "download": f"{nearest['download_mbps']:.2f} Mbps", "latency": f"{nearest['latency_ms']:.1f} ms" },
+            "community_alert": has_alert
         }
-
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# ----------- BANK STATUS -----------
-@app.get("/banks")
-async def get_banks():
-    return {
-        "SBI": {"name": "SBI", "status": "Online", "up": 99.8, "latency": 45},
-        "HDFC": {"name": "HDFC", "status": "Online", "up": 99.9, "latency": 32},
-        "ICICI": {"name": "ICICI", "status": "Slow", "up": 97.5, "latency": 450},
-        "AXIS": {"name": "Axis", "status": "Online", "up": 99.2, "latency": 68},
-        "PNB": {"name": "PNB", "status": "Offline", "up": 0.0, "latency": 0},
-        "Other": {"name": "Other", "status": "Online", "up": 99.0, "latency": 50}
-    }
+# ----------- BANK MONITORING API -----------
+@app.get("/bank-status")
+async def bank_status():
+    """Returns ALL banks with their latest UPI status from the CSV log."""
+    try:
+        if not CSV_FILE.exists():
+            return {"banks": [], "problematic_banks": [], "last_updated": None}
 
-# ----------- BANK PREDICTION (COMBINED LOGIC) -----------
+        df = pd.read_csv(CSV_FILE)
+        df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce')
+        df = df.sort_values("timestamp", ascending=False)
+        latest_df = df.drop_duplicates(subset=["bank_name"], keep="first")
+
+        current_time = datetime.now()
+        banks = []
+        for _, row in latest_df.iterrows():
+            upi_raw = str(row.get("upi", "UP")).strip().upper()
+            status = "DOWN" if "DOWN" in upi_raw else ("FLUCTUATING" if any(x in upi_raw for x in ["WARN", "FLUCT"]) else "UP")
+            icon = "❌" if status == "DOWN" else ("⚠️" if status == "FLUCTUATING" else "✅")
+            
+            ts = row["timestamp"]
+            stale = (current_time - ts).total_seconds() / 60 > 20 if pd.notna(ts) else True
+            banks.append({"bank": row["bank_name"], "status": status, "icon": icon, "timestamp": str(ts), "stale": stale})
+
+        # Sort: Issues first
+        order = {"DOWN": 0, "FLUCTUATING": 1, "UP": 2}
+        banks.sort(key=lambda x: order.get(x["status"], 3))
+        
+        return {
+            "banks": banks,
+            "problematic_banks": [b for b in banks if b["status"] != "UP"],
+            "last_updated": str(latest_df["timestamp"].max()) if not latest_df.empty else None
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
 @app.post("/bank-predict")
 async def bank_predict(req: BankPredictionRequest):
-    # Simulated Bank State (In the future, you'll fetch this live)
-    # We'll use a simple mock mapping for testing different states
-    bank_states = {
-        "SBI": "UP",
-        "HDFC": "FLUCTUATING",
-        "ICICI": "DOWN",
-        "AXIS": "UP",
-        "PNB": "DOWN"
-    }
-    
-    state = bank_states.get(req.bank, "UP")
-    final_score = 0.0
+    """Calculates final success rate based on both Network and Bank Server health."""
+    status, stale = get_bank_upi_status(req.bank)
+    final_score = req.network_score
     status_text = "Online"
-    success_label = "High"
-
-    if state == "UP":
-        # Depends entirely on network
-        final_score = req.network_score
-        status_text = "Online"
-    elif state == "FLUCTUATING":
-        # Reduce network score by 40%
-        final_score = req.network_score * 0.6
-        status_text = "Fluctuating"
-    else: # DOWN
-        # Forced to high risk
-        final_score = 1.5 # 1-2%
+    
+    if status == "DOWN":
+        final_score = 5.0
         status_text = "Down"
-
-    # Determine label for UI
-    if final_score > 80: success_label = "High"
-    elif final_score > 50: success_label = "Moderate"
-    else: success_label = "Low"
+    elif status == "FLUCTUATING":
+        final_score = req.network_score * 0.4
+        status_text = "Fluctuating"
 
     return {
-        "name": req.bank,
-        "status": status_text,
-        "up": 99.9 if state == "UP" else (60.0 if state == "FLUCTUATING" else 0.0),
-        "latency": 45 if state == "UP" else (350 if state == "FLUCTUATING" else 0),
-        "success_rate": success_label,
+        "name": req.bank, "status": status_text, "success_rate": "High" if final_score > 80 else ("Moderate" if final_score > 50 else "Low"),
         "final_score": round(final_score, 1)
     }
 
@@ -299,64 +301,40 @@ async def bank_predict(req: BankPredictionRequest):
 FEEDBACK_FILE = "feedback_data.csv"
 
 def get_all_feedback():
-    if not os.path.exists(FEEDBACK_FILE): return []
+    if not os.path.exists(FEEDBACK_FILE): return pd.DataFrame()
     try:
         df = pd.read_csv(FEEDBACK_FILE)
-        # Convert timestamp strings back to datetime objects for easy math
-        df['timestamp'] = pd.to_datetime(df['timestamp'])
-        return df
-    except Exception as e:
-        print(f"Error reading CSV: {e}")
-        return pd.DataFrame()
+        df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce')
+        return df.dropna(subset=['timestamp'])
+    except: return pd.DataFrame()
 
-def save_feedback_record(record):
-    file_exists = os.path.exists(FEEDBACK_FILE)
-    
-    # Flatten metrics or store as JSON string for CSV compatibility
-    if isinstance(record.get("metrics"), dict):
-        record["metrics"] = json.dumps(record["metrics"])
-        
-    df = pd.DataFrame([record])
-    df.to_csv(FEEDBACK_FILE, mode='a', index=False, header=not file_exists)
-
-def check_nearby_failures(lat, lon, radius_km=0.5): # Increased to 500m for testing
+def check_nearby_failures(lat, lon, radius_km=1.0):
     try:
         df = get_all_feedback()
         if df.empty: return False
         
-        now = datetime.now()
-        failed_df = df[df['outcome'] == 'failed'].copy()
-        if failed_df.empty: return False
-        
-        failed_df['timestamp'] = pd.to_datetime(failed_df['timestamp'], errors='coerce')
-        failed_df = failed_df.dropna(subset=['timestamp'])
-        
-        time_threshold = now - timedelta(minutes=15)
-        recent_failed = failed_df[failed_df['timestamp'] >= time_threshold]
-        
-        print(f"DEBUG: Analyzing {len(recent_failed)} recent failures near ({lat:.4f}, {lon:.4f})")
+        # 30-minute window is more realistic for regional issues
+        threshold = datetime.now() - timedelta(minutes=30)
+        recent_failed = df[(df['outcome'] == 'failed') & (df['timestamp'] >= threshold)]
         
         for _, row in recent_failed.iterrows():
-            r_lat, r_lon = float(row['lat']), float(row['lon'])
-            dist = ((r_lat - lat)**2 + (r_lon - lon)**2)**0.5 * 111
+            # Robust Euclidean distance approximation
+            d_lat = float(row['lat']) - lat
+            d_lon = (float(row['lon']) - lon) * np.cos(np.radians(lat))
+            dist = (d_lat**2 + d_lon**2)**0.5 * 111.32
             
-            # Log every check so we can see the gap
-            print(f"   > Found failure at ({r_lat:.4f}, {r_lon:.4f}) - Distance: {dist*1000:.1f} meters")
-            
-            if dist <= radius_km:
-                print(f"DEBUG: MATCH FOUND within {radius_km*1000}m!")
-                return True
-                
+            if dist <= radius_km: return True
         return False
     except Exception as e:
-        print(f"COMMUNITY ALERT ERROR: {e}")
+        print(f"Community Alert Error: {e}")
         return False
 
 @app.post("/feedback")
 async def submit_feedback(req: FeedbackRequest):
     record = req.dict()
     record["timestamp"] = datetime.now().isoformat()
-    save_feedback_record(record)
+    file_exists = os.path.exists(FEEDBACK_FILE)
+    pd.DataFrame([record]).to_csv(FEEDBACK_FILE, mode='a', index=False, header=not file_exists)
     return {"status": "recorded"}
 
 # ----------- FRONTEND -----------

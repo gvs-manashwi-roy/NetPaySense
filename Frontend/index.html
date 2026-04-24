@@ -261,21 +261,19 @@
         <div id="dash-bank-dropdown" class="hidden"
           style="margin-top:10px; background:rgba(0,0,0,0.03); border-radius:12px; padding:12px; margin-bottom:10px;">
           <div class="card-label" style="margin-bottom:8px; font-size:0.8rem;">Select your payment bank</div>
-          <div class="bank-select-wrap">
-            <select id="bank-select" onchange="selectPaymentBank()" class="bank-dropdown">
-              <option value="">Choose Bank</option>
-              <option value="PNB">Punjab National Bank</option>
-              <option value="HDFC">HDFC Bank</option>
-              <option value="AXIS">Axis Bank</option>
-              <option value="BOB">Bank of Baroda</option>
-              <option value="AIRTEL">Airtel Payments Bank</option>
-              <option value="CANARA">Canara Bank</option>
-              <option value="ICICI">ICICI Bank</option>
-              <option value="KOTAK">Kotak Mahindra Bank</option>
-              <option value="SBI">State Bank of India</option>
-              <option value="AU">AU Small Finance Bank</option>
-            </select>
-            <span class="bank-select-arrow">▼</span>
+          <div class="custom-select-wrap" id="custom-bank-select">
+            <div class="custom-select-trigger" onclick="toggleCustomDropdown()">
+              <div class="custom-select-value" id="custom-select-value">
+                <span style="display:flex; align-items:center; gap:8px;">
+                  Choose Bank
+                </span>
+              </div>
+              <span class="bank-select-arrow">▼</span>
+            </div>
+            <div class="custom-select-options hidden" id="custom-select-options">
+              <!-- Options dynamically populated by JS -->
+            </div>
+            <input type="hidden" id="bank-select" value="" onchange="selectPaymentBank()">
           </div>
         </div>
 
@@ -391,34 +389,41 @@
       <!-- Bank Server Status Panel -->
       <div class="step-panel hidden" id="dash-bank">
         <div class="welcome-block" style="padding-top:8px">
-          <h1 class="welcome-title" style="font-size:1.1rem">🏦 Check Bank Server Status</h1>
-          <p class="welcome-sub">Select a bank to view its live UPI server status</p>
+          <h1 class="welcome-title" style="font-size:1.1rem">🏦 Live UPI Bank Status</h1>
+          <p class="welcome-sub">Real-time UPI server health — auto-refreshes every minute</p>
         </div>
-        <div class="card">
-          <div class="card-label" style="margin-bottom:12px"><span class="label-dot blue"></span> Select Bank</div>
-          <div class="bank-select-wrap">
-            <select id="bank-select" onchange="showBankStatus()" class="bank-dropdown">
-              <option value="">Choose Bank</option>
-              <option value="PNB">Punjab National Bank</option>
-              <option value="HDFC">HDFC Bank</option>
-              <option value="AXIS">Axis Bank</option>
-              <option value="BOB">Bank of Baroda</option>
-              <option value="AIRTEL">Airtel Payments Bank</option>
-              <option value="CANARA">Canara Bank</option>
-              <option value="ICICI">ICICI Bank</option>
-              <option value="KOTAK">Kotak Mahindra Bank</option>
-              <option value="SBI">State Bank of India</option>
-              <option value="AU">AU Small Finance Bank</option>
-            </select>
-            <span class="bank-select-arrow">▼</span>
+
+        <!-- Status Legend -->
+        <div class="card" style="padding:10px 16px; margin-bottom:12px;">
+          <div style="display:flex; gap:18px; flex-wrap:wrap; font-size:0.82rem; color:var(--text-secondary);">
+            <span>✅ Operational</span>
+            <span>⚠️ Fluctuating</span>
+            <span>❌ Down</span>
+            <span id="bank-last-updated" style="margin-left:auto; font-size:0.75rem; opacity:0.7">—</span>
           </div>
         </div>
-        <div class="card hidden fade-in" id="bank-status-card">
-          <div class="bank-status-title" id="bank-status-title"></div>
-          <div class="divider" style="margin-top:12px"></div>
-          <div class="bank-status-rows" id="bank-status-rows"></div>
-          <div class="divider"></div>
-          <div class="bank-overall-status" id="bank-overall-status"></div>
+
+        <!-- Live Bank Grid -->
+        <div id="live-bank-grid" class="live-bank-grid">
+          <div class="bank-grid-loading">⏳ Loading bank status…</div>
+        </div>
+
+        <!-- Issues Banner (only shown if any issues) -->
+        <div id="bank-issues-banner" class="hidden" style="margin-top:4px;">
+          <div class="card"
+            style="background: linear-gradient(135deg, #fff7ed, #fef3c7); border-left: 4px solid #f59e0b; padding:12px 16px;">
+            <p style="font-weight:600; font-size:0.9rem; margin:0 0 6px 0;">⚠️ Active UPI Issues</p>
+            <div id="problematic-banks-list" class="bank-issues-container"></div>
+          </div>
+        </div>
+
+        <!-- All-clear message (when no issues) -->
+        <div id="bank-all-clear" class="hidden" style="margin-top:4px;">
+          <div class="card"
+            style="text-align:center; padding:16px; background:linear-gradient(135deg,#f0fdf4,#dcfce7); border-left:4px solid #22c55e;">
+            <div style="font-size:1.8rem">✅</div>
+            <p style="font-weight:600; color:#15803d; margin:6px 0 0 0;">All UPI systems are operational</p>
+          </div>
         </div>
       </div>
     </div>
@@ -473,8 +478,8 @@
         <div id="community-alert-banner" class="community-alert-card hidden">
           <div class="alert-icon">🚨</div>
           <div class="alert-text">
-            <strong>Community Alert!</strong>
-            <p>Recent payment failures reported nearby.</p>
+            <strong>Regional Failure Alert</strong>
+            <p>Multiple payment failures reported nearby in the last 30 minutes. High risk detected.</p>
           </div>
         </div>
         <p class="step-label">Results</p>
@@ -494,7 +499,6 @@
           </div>
           <div id="results-bank-status">
             <div class="bank-status-title" id="results-bank-title" style="margin-top:0"></div>
-            <div class="divider" style="margin:10px 0"></div>
             <div class="bank-status-rows" id="results-bank-rows"></div>
             <div class="divider"></div>
             <div class="bank-overall-status" id="results-bank-overall"></div>
