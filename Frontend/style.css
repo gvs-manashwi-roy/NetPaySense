@@ -369,3 +369,162 @@ body {
   .spinner { width: 80px; height: 80px; }
   .analyzing-steps { max-width: 360px; }
 }
+
+/* ── Live Bank Grid ── */
+.live-bank-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.bank-grid-loading {
+  text-align: center;
+  padding: 28px 16px;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  background: var(--card-bg);
+  border-radius: 16px;
+  border: 1px solid var(--card-border);
+}
+
+.bank-grid-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 14px;
+  border: 1px solid transparent;
+  transition: transform 0.15s;
+}
+
+.bank-grid-row:hover { transform: translateX(3px); }
+
+.grid-status-up {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+.grid-status-down {
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+.grid-status-warn {
+  background: #fffbeb;
+  border-color: #fde68a;
+}
+
+[data-theme="dark"] .grid-status-up  { background: #14532d22; border-color: #16a34a55; }
+[data-theme="dark"] .grid-status-down { background: #7f1d1d22; border-color: #dc262655; }
+[data-theme="dark"] .grid-status-warn { background: #78350f22; border-color: #f59e0b55; }
+
+.bank-grid-icon {
+  font-size: 1.3rem;
+  flex-shrink: 0;
+  width: 26px;
+  text-align: center;
+}
+
+.bank-grid-name {
+  flex: 1;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.bank-grid-status {
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 20px;
+  flex-shrink: 0;
+}
+
+.grid-status-up .bank-grid-status   { background: #dcfce7; color: #15803d; }
+.grid-status-down .bank-grid-status { background: #fee2e2; color: #b91c1c; }
+.grid-status-warn .bank-grid-status { background: #fef9c3; color: #92400e; }
+
+.bank-grid-stale {
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: #94a3b8;
+  margin-left: 5px;
+  font-style: italic;
+}
+
+/* ── Bank Issue Badge ── */
+.bank-issue-badge { font-size: 0.72rem; font-weight: 700; padding: 3px 10px; border-radius: 20px; }
+.bank-issue-badge.down { background: #fee2e2; color: #b91c1c; }
+.bank-issue-badge.fluctuating { background: #fef9c3; color: #92400e; }
+.bank-issue-badge.up { background: #dcfce7; color: #15803d; }
+
+/* ── Custom Dropdown ── */
+.custom-select-wrap {
+  position: relative;
+  width: 100%;
+}
+.custom-select-trigger {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(0,0,0,0.1);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 0.2s ease;
+}
+.custom-select-trigger:hover {
+  border-color: #0ea5e9;
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
+}
+.custom-select-options {
+  position: absolute;
+  top: calc(100% + 5px);
+  left: 0;
+  width: 100%;
+  max-height: 250px;
+  overflow-y: auto;
+  background: var(--bg);
+  border-radius: 12px;
+  border: 1px solid rgba(0,0,0,0.1);
+  box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+  z-index: 100;
+}
+.custom-select-option {
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  transition: background 0.1s ease;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text);
+}
+.custom-select-option:hover {
+  background: rgba(14, 165, 233, 0.1);
+}
+
+/* ── Bank Logos ── */
+.bank-logo {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  object-fit: contain;
+  background: #fff;
+  border: 1px solid rgba(0,0,0,0.1);
+}
+.bank-logo-lg {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: contain;
+  background: #fff;
+  border: 1px solid rgba(0,0,0,0.1);
+}

@@ -215,3 +215,6 @@ __pycache__/
 *.log
 node_modules/
 data/*.csv
+
+.venv_final/
+.venv_new/

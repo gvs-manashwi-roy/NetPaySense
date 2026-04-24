@@ -1,3 +1,88 @@
+// ── Global Config ──
+const BANK_DOMAINS = {
+  "State Bank of India": "sbi.co.in",
+  "HDFC Bank": "hdfcbank.com",
+  "ICICI Bank": "icicibank.com",
+  "Punjab National Bank": "pnbindia.in",
+  "Bank Of Baroda": "bankofbaroda.in",
+  "Canara Bank": "canarabank.com",
+  "Axis Bank": "axisbank.com",
+  "Union Bank of India": "unionbankofindia.co.in",
+  "Indian Bank": "indianbank.in",
+  "Airtel Payments Bank": "airtel.in",
+  "Kotak Mahindra Bank": "kotak.com",
+  "Bank of India": "bankofindia.co.in",
+  "AU Small Finance Bank": "aubank.in"
+};
+
+const BANK_DROPDOWN_OPTIONS = [
+  { value: "", name: "Choose Bank" },
+  { value: "State Bank of India", name: "State Bank of India (SBI)" },
+  { value: "HDFC Bank", name: "HDFC Bank" },
+  { value: "ICICI Bank", name: "ICICI Bank" },
+  { value: "Punjab National Bank", name: "Punjab National Bank" },
+  { value: "Bank Of Baroda", name: "Bank of Baroda" },
+  { value: "Canara Bank", name: "Canara Bank" },
+  { value: "Axis Bank", name: "Axis Bank" },
+  { value: "Union Bank of India", name: "Union Bank of India" },
+  { value: "Indian Bank", name: "Indian Bank" },
+  { value: "Airtel Payments Bank", name: "Airtel Payments Bank" },
+  { value: "Kotak Mahindra Bank", name: "Kotak Mahindra Bank" },
+  { value: "Bank of India", name: "Bank of India" },
+  { value: "AU Small Finance Bank", name: "AU Small Finance Bank" }
+];
+
+// ── Custom Dropdown Logic ──
+function toggleCustomDropdown() {
+  document.getElementById('custom-select-options').classList.toggle('hidden');
+}
+
+function selectCustomBank(value, name) {
+  const select = document.getElementById('bank-select');
+  select.value = value;
+  
+  const displayValue = document.getElementById('custom-select-value');
+  const domain = BANK_DOMAINS[value];
+  
+  if (value && domain) {
+    displayValue.innerHTML = `<span style="display:flex; align-items:center; gap:8px;">
+      <img src="https://www.google.com/s2/favicons?domain=${domain}&sz=64" class="bank-logo" onerror="this.style.display='none'"> 
+      ${name}
+    </span>`;
+  } else {
+    displayValue.innerHTML = `<span style="display:flex; align-items:center; gap:8px;">${name}</span>`;
+  }
+  
+  document.getElementById('custom-select-options').classList.add('hidden');
+  selectPaymentBank(); // trigger change
+}
+
+function initCustomDropdown() {
+  const container = document.getElementById('custom-select-options');
+  if (!container) return;
+  
+  container.innerHTML = BANK_DROPDOWN_OPTIONS.map(opt => {
+    const domain = BANK_DOMAINS[opt.value];
+    const logoHtml = domain ? `<img src="https://www.google.com/s2/favicons?domain=${domain}&sz=64" class="bank-logo" onerror="this.style.display='none'">` : '';
+    return `<div class="custom-select-option" onclick="selectCustomBank('${opt.value}', '${opt.name}')">
+      ${logoHtml} ${opt.name}
+    </div>`;
+  }).join('');
+}
+
+// Close dropdown if clicked outside
+document.addEventListener('click', (e) => {
+  const wrap = document.getElementById('custom-bank-select');
+  const opts = document.getElementById('custom-select-options');
+  if (wrap && opts && !wrap.contains(e.target)) {
+    opts.classList.add('hidden');
+  }
+});
+
+function selectPaymentBank() {
+  // Can be empty, used as a hook
+}
+
 // ── Theme ──
 function initTheme() {
   const saved = localStorage.getItem('nps_theme') || 'light';
@@ -239,17 +324,117 @@ const RECS = {
 };
 
 const BANK_DATA = {
-  SBI: { name: 'SBI', rows: [{ label: 'UPI Transactions', status: 'Online' }, { label: 'UPI Balance Check', status: 'Available' }, { label: 'UPI Registration', status: 'Active' }], overall: 'All Services are Operational', ok: true },
-  HDFC: { name: 'HDFC', rows: [{ label: 'UPI Transactions', status: 'Online' }, { label: 'UPI Balance Check', status: 'Available' }, { label: 'UPI Registration', status: 'Active' }], overall: 'All Services are Operational', ok: true },
-  ICICI: { name: 'ICICI', rows: [{ label: 'UPI Transactions', status: 'Online' }, { label: 'UPI Balance Check', status: 'Delayed' }, { label: 'UPI Registration', status: 'Active' }], overall: 'Minor Delays Detected', ok: false },
-  PNB: { name: 'PNB', rows: [{ label: 'UPI Transactions', status: 'Offline' }, { label: 'UPI Balance Check', status: 'Unavailable' }, { label: 'UPI Registration', status: 'Active' }], overall: 'UPI Transactions Currently Down', ok: false },
-  BOB: { name: 'Bank of Baroda', rows: [{ label: 'UPI Transactions', status: 'Online' }, { label: 'UPI Balance Check', status: 'Available' }, { label: 'UPI Registration', status: 'Active' }], overall: 'All Services are Operational', ok: true },
-  CANARA: { name: 'Canara Bank', rows: [{ label: 'UPI Transactions', status: 'Online' }, { label: 'UPI Balance Check', status: 'Available' }, { label: 'UPI Registration', status: 'Active' }], overall: 'All Services are Operational', ok: true },
-  AXIS: { name: 'Axis Bank', rows: [{ label: 'UPI Transactions', status: 'Online' }, { label: 'UPI Balance Check', status: 'Available' }, { label: 'UPI Registration', status: 'Active' }], overall: 'All Services are Operational', ok: true },
-  UNION: { name: 'Union Bank', rows: [{ label: 'UPI Transactions', status: 'Online' }, { label: 'UPI Balance Check', status: 'Delayed' }, { label: 'UPI Registration', status: 'Active' }], overall: 'Minor Delays Detected', ok: false },
-  INDIAN: { name: 'Indian Bank', rows: [{ label: 'UPI Transactions', status: 'Online' }, { label: 'UPI Balance Check', status: 'Available' }, { label: 'UPI Registration', status: 'Active' }], overall: 'All Services are Operational', ok: true },
-  BOI: { name: 'Bank of India', rows: [{ label: 'UPI Transactions', status: 'Online' }, { label: 'UPI Balance Check', status: 'Available' }, { label: 'UPI Registration', status: 'Active' }], overall: 'All Services are Operational', ok: true },
+  SBI: { name: 'State Bank of India', rows: [{ label: 'UPI Transactions', status: 'Online' }], overall: 'All Services are Operational', ok: true },
+  HDFC: { name: 'HDFC Bank', rows: [{ label: 'UPI Transactions', status: 'Online' }], overall: 'All Services are Operational', ok: true },
+  ICICI: { name: 'ICICI Bank', rows: [{ label: 'UPI Transactions', status: 'Online' }], overall: 'All Services are Operational', ok: true },
+  PNB: { name: 'Punjab National Bank', rows: [{ label: 'UPI Transactions', status: 'Online' }], overall: 'All Services are Operational', ok: true },
+  BOB: { name: 'Bank of Baroda', rows: [{ label: 'UPI Transactions', status: 'Online' }], overall: 'All Services are Operational', ok: true },
+  AXIS: { name: 'Axis Bank', rows: [{ label: 'UPI Transactions', status: 'Online' }], overall: 'All Services are Operational', ok: true },
 };
+
+// 🔥 Real-time Bank Status Fetch
+async function refreshBankStatus() {
+  try {
+    const res = await fetch('http://localhost:8000/bank-status');
+    const data = await res.json();
+
+    // Update the live bank grid in the Banks tab
+    if (data.banks) {
+      renderLiveBankGrid(data.banks, data.last_updated);
+    }
+
+    // Update BANK_DATA so results panel is also accurate
+    if (data.banks) {
+      data.banks.forEach(b => {
+        const key = Object.keys(BANK_DATA).find(k =>
+          BANK_DATA[k].name.toLowerCase().includes(b.bank.toLowerCase()) ||
+          b.bank.toLowerCase().includes(BANK_DATA[k].name.split(' ')[0].toLowerCase())
+        );
+        if (key) {
+          BANK_DATA[key].ok = b.status === 'UP';
+          BANK_DATA[key].rows = [{ label: 'UPI Transactions', status: b.status }];
+          BANK_DATA[key].overall = b.status === 'DOWN'
+            ? 'CRITICAL: Server Down'
+            : b.status === 'FLUCTUATING'
+            ? 'Warning: Fluctuating'
+            : 'All Services Operational';
+        }
+      });
+    }
+
+    // Show/hide issues banner and all-clear
+    const problematic = data.problematic_banks || [];
+    renderProblematicBanks(problematic);
+
+  } catch (err) {
+    console.error("Bank status fetch failed", err);
+    const grid = document.getElementById('live-bank-grid');
+    if (grid) grid.innerHTML = `<div class="bank-grid-loading" style="color:#ef4444">⚠️ Could not connect to backend</div>`;
+  }
+}
+refreshBankStatus();
+setInterval(refreshBankStatus, 60000); // every minute
+
+// 🔥 Render Live Bank Status Grid
+function renderLiveBankGrid(banks, lastUpdated) {
+  const grid = document.getElementById('live-bank-grid');
+  if (!grid) return;
+
+  // Update timestamp
+  const tsEl = document.getElementById('bank-last-updated');
+  if (tsEl && lastUpdated) {
+    const d = new Date(lastUpdated);
+    tsEl.textContent = `Updated: ${d.toLocaleTimeString()}`;
+  }
+
+  if (!banks || banks.length === 0) {
+    grid.innerHTML = `<div class="bank-grid-loading">No data available yet</div>`;
+    return;
+  }
+
+  grid.innerHTML = banks.map(b => {
+    const statusClass = b.status === 'UP' ? 'grid-status-up'
+      : b.status === 'DOWN' ? 'grid-status-down'
+      : 'grid-status-warn';
+    const staleNote = b.stale ? `<span class="bank-grid-stale">⏱ stale</span>` : '';
+    
+    const domain = BANK_DOMAINS[b.bank];
+    const logoHtml = domain ? `<img src="https://www.google.com/s2/favicons?domain=${domain}&sz=64" class="bank-logo" onerror="this.style.display='none'">` : `<span class="bank-grid-icon">${b.icon}</span>`;
+    const statusIcon = b.status === 'UP' ? '✅' : b.status === 'DOWN' ? '❌' : '⚠️';
+
+    return `
+      <div class="bank-grid-row ${statusClass} fade-in">
+        ${logoHtml}
+        <span class="bank-grid-name" style="margin-left: 10px;">${b.bank}</span>
+        <span class="bank-grid-status">${statusIcon} ${b.status}${staleNote}</span>
+      </div>`;
+  }).join('');
+}
+
+// 🔥 Render Problematic Banks (Issues Banner)
+function renderProblematicBanks(banks) {
+  const banner = document.getElementById('bank-issues-banner');
+  const allClear = document.getElementById('bank-all-clear');
+  const container = document.getElementById('problematic-banks-list');
+
+  if (!banks || banks.length === 0) {
+    if (banner) banner.classList.add('hidden');
+    if (allClear) allClear.classList.remove('hidden');
+    return;
+  }
+
+  if (banner) banner.classList.remove('hidden');
+  if (allClear) allClear.classList.add('hidden');
+
+  if (container) {
+    container.innerHTML = banks.map(b => `
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid rgba(0,0,0,0.06)">
+        <span style="font-weight:500; font-size:0.88rem">${b.icon} ${b.bank}</span>
+        <span class="bank-issue-badge ${b.status.toLowerCase()}" style="font-size:0.75rem">${b.status}</span>
+      </div>
+    `).join('');
+  }
+}
 
 let currentSig = null;
 let currentLat = 12.9716;
@@ -351,7 +536,11 @@ async function runAnalyzing(raw, btn) {
     const res = await fetch('http://localhost:8000/predict', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ lat, lon })
+      body: JSON.stringify({ 
+        lat, 
+        lon,
+        bank_name: document.getElementById('bank-select')?.value || null
+      })
     });
     const data = await res.json();
     lastNetworkScore = parseFloat(data.upi.match(/\d+/) || 90); // Save for bank logic
@@ -525,24 +714,40 @@ function selectPaymentBank() {
 let lastNetworkScore = 90.0;
 
 async function showResultsBankStatus() {
-  const key = selectedBank || "SBI"; 
+  const key = selectedBank || "SBI";
   const container = document.getElementById('results-bank-status');
-  
+
+  // Get live icon from already-fetched bank grid data
+  let liveIcon = '✅';
+  let liveStatus = 'UP';
+  try {
+    const statusRes = await fetch('http://localhost:8000/bank-status');
+    const statusData = await statusRes.json();
+    if (statusData.banks) {
+      const match = statusData.banks.find(b =>
+        b.bank.toLowerCase().includes(key.toLowerCase())
+      );
+      if (match) { liveIcon = match.icon; liveStatus = match.status; }
+    }
+  } catch (_) {}
+
   try {
     const res = await fetch('http://localhost:8000/bank-predict', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        bank: key, 
-        lat: 12.9716, 
+      body: JSON.stringify({
+        bank: key,
+        lat: 12.9716,
         lon: 77.5946,
         network_score: lastNetworkScore
-      }) 
+      })
     });
     const bankData = await res.json();
+    bankData._liveIcon = liveIcon;
+    bankData._liveStatus = liveStatus;
 
     renderBankCardLive(bankData, 'results-bank-title', 'results-bank-rows', 'results-bank-overall');
-    
+
     // Update the main UPI Success UI with the combined final score
     const upiVal = document.getElementById('upi-value');
     const upiBadge = document.getElementById('upi-badge');
@@ -558,44 +763,53 @@ async function showResultsBankStatus() {
 
 function renderBankCardLive(bank, titleId, rowsId, overallId) {
   const displayName = bank.name || bank.bank || selectedBank || "Bank";
-  
-  const logos = {
-    "SBI": "sbi.co.in",
-    "HDFC": "hdfcbank.com",
-    "ICICI": "icicibank.com",
-    "AXIS": "axisbank.com",
-    "PNB": "pnbindia.in",
-    "BOB": "bankofbaroda.in",
-    "CANARA": "canarabank.com",
-    "UNION": "unionbankofindia.co.in",
-    "INDIAN": "indianbank.in",
-    "BOI": "bankofindia.co.in"
-  };
-  
-  const domain = logos[displayName];
-  const primaryLogo = domain ? `https://logo.clearbit.com/${domain}` : `https://api.dicebear.com/7.x/initials/svg?seed=${displayName}`;
+
+  // Live status icon from CSV data (attached by showResultsBankStatus)
+  const liveIcon = bank._liveIcon || '✅';
+  const liveStatus = bank._liveStatus || 'UP';
+
+  const domain = BANK_DOMAINS[displayName];
+  const primaryLogo = domain ? `https://www.google.com/s2/favicons?domain=${domain}&sz=128` : `https://api.dicebear.com/7.x/initials/svg?seed=${displayName}`;
   const fallbackLogo = `https://api.dicebear.com/7.x/initials/svg?seed=${displayName}&backgroundColor=0ea5e9&fontFamily=Arial&bold=true`;
+
+  // Icon style based on live status
+  const iconBg = liveStatus === 'UP' ? '#dcfce7'
+    : liveStatus === 'DOWN' ? '#fee2e2' : '#fef9c3';
+  const iconColor = liveStatus === 'UP' ? '#15803d'
+    : liveStatus === 'DOWN' ? '#b91c1c' : '#92400e';
 
   document.getElementById(titleId).innerHTML = `
     <div style="display:flex; align-items:center; gap:12px;">
-      <img src="${primaryLogo}" 
-           onerror="this.onerror=null; this.src='${fallbackLogo}';" 
-           alt="${displayName}" 
+      <img src="${primaryLogo}"
+           onerror="this.onerror=null; this.src='${fallbackLogo}';"
+           alt="${displayName}"
            style="width:32px; height:32px; border-radius:8px; object-fit:contain; background:white; padding:2px; box-shadow:0 2px 4px rgba(0,0,0,0.1);">
-      <span>${displayName} UPI Server Status</span>
+      <span style="flex:1; font-weight:700; font-size:0.95rem;">${displayName} UPI Server Status</span>
+      <div style="
+        width:44px; height:44px; border-radius:50%;
+        background:${iconBg};
+        display:flex; align-items:center; justify-content:center;
+        font-size:1.5rem;
+        box-shadow:0 2px 8px ${iconBg};
+        animation:fadeUp 0.4s ease;
+        flex-shrink:0;
+      " title="${liveStatus}">${liveIcon}</div>
     </div>
   `;
-  
-  const isOk = (bank.status === 'Online' || bank.status === 'success');
-  const statusText = bank.status || "Online";
-  const uptime = bank.up || 99.9;
-  const latency = bank.latency || 45;
+
+  // Use live status for row icon
+  const rowIcon = liveStatus === 'UP' ? '✅' : liveStatus === 'DOWN' ? '❌' : '⚠️';
+  const rowClass = liveStatus === 'UP' ? 'bank-row-ok' : 'bank-row-warn';
+  const statusText = liveStatus === 'UP' ? 'Online'
+    : liveStatus === 'DOWN' ? 'Down' : 'Fluctuating';
+  const uptime = bank.up || (liveStatus === 'UP' ? 99.9 : liveStatus === 'FLUCTUATING' ? 60.0 : 0.0);
+  const latency = bank.latency || (liveStatus === 'UP' ? 45 : liveStatus === 'FLUCTUATING' ? 350 : 0);
 
   document.getElementById(rowsId).innerHTML = `
     <div class="bank-status-row">
-      <span class="bank-row-icon">${isOk ? '✅' : '⚠️'}</span>
+      <span class="bank-row-icon">${rowIcon}</span>
       <span class="bank-row-label">UPI Transactions:</span>
-      <span class="bank-row-val ${isOk ? 'bank-row-ok' : 'bank-row-warn'}">${statusText}</span>
+      <span class="bank-row-val ${rowClass}">${statusText}</span>
     </div>
     <div class="bank-status-row">
       <span class="bank-row-icon">🕒</span>
@@ -608,9 +822,14 @@ function renderBankCardLive(bank, titleId, rowsId, overallId) {
       <span class="bank-row-val">${latency}ms</span>
     </div>
   `;
+
   const overall = document.getElementById(overallId);
-  overall.textContent = isOk ? 'All Services Operational' : 'Minor Delays / Offline';
-  overall.className = `bank-overall-status ${isOk ? 'ok' : 'warn'}`;
+  const isOk = liveStatus === 'UP';
+  const isDown = liveStatus === 'DOWN';
+  overall.textContent = isOk ? '✅ All Services Operational'
+    : isDown ? '❌ Server Currently Down'
+    : '⚠️ Minor Delays / Fluctuating';
+  overall.className = `bank-overall-status ${isOk ? 'ok' : isDown ? 'down' : 'warn'}`;
 }
 
 // ── Feedback ──
@@ -752,3 +971,4 @@ initTheme();
 initOnboarding();
 initScrollTop();
 renderRecents();
+initCustomDropdown();

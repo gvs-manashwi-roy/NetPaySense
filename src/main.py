@@ -12,6 +12,11 @@ import geopandas as gpd
 from shapely.geometry import Point
 from scipy.spatial import KDTree
 from pathlib import Path
+import asyncio
+from datetime import datetime
+from bank_monitor import fetch_bank_health, get_bank_upi_status, get_problematic_banks, clean_old_data, CSV_FILE
+from apscheduler.schedulers.background import BackgroundScheduler
+import threading
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 MODEL_PATH = BASE_DIR / "models"
@@ -28,6 +33,20 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.on_event("startup")
+async def startup_event():
+    clean_old_data() # 🔥 Run cleanup on startup
+    
+    # Start the background scraper
+    scheduler = BackgroundScheduler(daemon=True)
+    scheduler.add_job(fetch_bank_health, 'interval', minutes=1)
+    scheduler.start()
+    
+    # Run the first scrape immediately in a separate thread so it doesn't block API
+    threading.Thread(target=fetch_bank_health, daemon=True).start()
+    
+    print("Background Scraper Started (Interval: 1 min)")
 
 gdf = gpd.read_file(DATA_PATH / "IndiaStatesBoundaryShapes/India_State_Boundary.shp")
 
@@ -111,6 +130,7 @@ class PredictionRequest(BaseModel):
     snr: float = None
     cqi: float = None
     dbm: float = None
+    bank_name: str = None # ✅ NEW
 
 class BankPredictionRequest(BaseModel):
     bank: str
@@ -155,6 +175,68 @@ def get_ui_data(quality_score):
         }
 
 # ----------- MAIN API -----------
+@app.get("/bank-status")
+async def bank_status():
+    """Returns ALL banks with their latest UPI status from the CSV log."""
+    try:
+        if not CSV_FILE.exists():
+            return {"banks": [], "problematic_banks": [], "last_updated": None}
+
+        df = pd.read_csv(CSV_FILE)
+        df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce')
+        df = df.sort_values("timestamp", ascending=False)
+        latest_df = df.drop_duplicates(subset=["bank_name"], keep="first")
+
+        current_time = datetime.now()
+        banks = []
+
+        for _, row in latest_df.iterrows():
+            upi_raw = str(row.get("upi", "UP")).strip()
+            upi_upper = upi_raw.upper()
+
+            if "DOWN" in upi_upper or upi_raw == "DOWN":
+                status = "DOWN"
+                icon = "❌"
+            elif any(x in upi_upper for x in ["FLUCTUAT", "WARNING", "WARN"]):
+                status = "FLUCTUATING"
+                icon = "⚠️"
+            else:
+                status = "UP"
+                icon = "✅"
+
+            ts = row["timestamp"]
+            minutes_ago = round((current_time - ts).total_seconds() / 60, 1) if pd.notna(ts) else None
+            stale = minutes_ago > 20 if minutes_ago is not None else True
+
+            banks.append({
+                "bank": row["bank_name"],
+                "status": status,
+                "icon": icon,
+                "timestamp": str(ts),
+                "minutes_ago": minutes_ago,
+                "stale": stale
+            })
+
+        # Sort: DOWN first, then FLUCTUATING, then UP
+        order = {"DOWN": 0, "FLUCTUATING": 1, "UP": 2}
+        banks.sort(key=lambda x: order.get(x["status"], 3))
+
+        problematic = [b for b in banks if b["status"] in ["DOWN", "FLUCTUATING"]]
+        last_ts = str(latest_df["timestamp"].max()) if not latest_df.empty else None
+
+        return {
+            "banks": banks,
+            "problematic_banks": problematic,
+            "last_updated": last_ts
+        }
+
+    except Exception as e:
+        return {"banks": [], "problematic_banks": [], "last_updated": None, "error": str(e)}
+
+@app.get("/problematic-banks")
+async def problematic_banks():
+    return {"banks": get_problematic_banks()}
+
 @app.post("/predict")
 async def predict(req: PredictionRequest):
 
@@ -202,6 +284,22 @@ async def predict(req: PredictionRequest):
 
         ui_data = get_ui_data(final_quality)
 
+        # ----------- BANK STATUS OVERRIDE -----------
+        bank_warning = None
+        if req.bank_name:
+            status, stale = get_bank_upi_status(req.bank_name)
+            if status == "DOWN":
+                ui_data["tier"] = "poor"
+                ui_data["badge"] = "CRITICAL RISK"
+                ui_data["upi"] = "Near 0% - Server Down"
+                ui_data["rec"] = f"STOP: {req.bank_name} servers are currently DOWN. Use Cash."
+                bank_warning = f"{req.bank_name} servers are offline."
+            elif status == "FLUCTUATING":
+                ui_data["badge"] = "High Risk (Bank Issues)"
+                ui_data["upi"] = "Low – 15-30%"
+                ui_data["rec"] = f"Warning: {req.bank_name} servers are unstable. Cash recommended."
+                bank_warning = f"{req.bank_name} servers are fluctuating."
+
         return {
             "lat": authentic_lat,
             "lon": authentic_lon,
@@ -214,7 +312,8 @@ async def predict(req: PredictionRequest):
             "type": ui_data["type"],
             "recommendation": ui_data["rec"],
             "confidence": f"{(final_quality + 1) * 30}%", 
-            "best_network": best_operator,   # ✅ NEW
+            "best_network": best_operator,
+            "bank_warning": bank_warning, # ✅ NEW
             "network_quality": {
                 "ookla": ["Poor", "Moderate", "Good"][m1_quality],
                 "signal": ["Poor", "Moderate", "Good"][m2_quality] if m2_quality is not None else "N/A"
