@@ -401,7 +401,8 @@ async function runAnalyzingWithCoords(name, lat, lng, btn) {
       upi: data.upi,
       badge: data.badge,
       dbm: data.dbm,
-      type: data.type
+      type: data.type,
+      network: data.best_network
     };
 
     setTimeout(() => {
@@ -445,6 +446,7 @@ function populateSignal(sig) {
 function populateRecs(tier) {
   const list = document.getElementById('rec-list');
   list.innerHTML = '';
+
   RECS[tier].forEach(r => {
     const li = document.createElement('li');
     li.innerHTML = `<div class="rec-icon-box">${r.icon}</div><span>${r.text}</span>`;
