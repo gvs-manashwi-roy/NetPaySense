@@ -24,7 +24,6 @@ DATA_PATH = BASE_DIR / "data"
 FRONTEND_DIR = BASE_DIR / "Frontend"
 
 OPENCELL_API_KEY = os.getenv("OPENCELL_API_KEY")
-print("API_KEY:",OPENCELL_API_KEY)
 
 app = FastAPI(title="NetPaySense API")
 
@@ -186,7 +185,8 @@ async def predict(req: PredictionRequest):
         # ----------- NEW FEATURE -----------
 
         nearest_tower_at_lat_lon = tower.find_nearest_tower(req.lat, req.lon, OPENCELL_API_KEY)
-        best_operator = nearest_tower_at_lat_lon["operator"]
+        
+        best_operator = nearest_tower_at_lat_lon.get("operator", "No towers available at the location.")
 
         ui_data = get_ui_data(final_quality)
 

@@ -215,3 +215,4 @@ __pycache__/
 *.log
 node_modules/
 data/*.csv
+src/test.py

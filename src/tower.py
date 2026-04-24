@@ -36,18 +36,15 @@ def find_nearest_tower(lat, lon, api_key):
     used_radius = None
 
     for radius in SEARCH_RADII:
-        print(f"Searching within {radius}km...", end=" ")
+        # print(f"Searching within {radius}km...", end=" ")
         towers = fetch_towers(lat, lon, radius, api_key)
         if towers:
             print(f"Found {len(towers)} tower(s).")
             used_radius = radius
             break
-        else:
-            print("No towers found.")
 
     if not towers:
-        print(f"No towers found within {SEARCH_RADII[-1]}km.")
-        return None
+        return {}
 
     for tower in towers:
         tower["distance_m"] = round(
