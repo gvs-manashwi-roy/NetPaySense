@@ -7,11 +7,8 @@ const BANK_DOMAINS = {
   "Bank Of Baroda": "bankofbaroda.in",
   "Canara Bank": "canarabank.com",
   "Axis Bank": "axisbank.com",
-  "Union Bank of India": "unionbankofindia.co.in",
-  "Indian Bank": "indianbank.in",
   "Airtel Payments Bank": "airtel.in",
   "Kotak Mahindra Bank": "kotak.com",
-  "Bank of India": "bankofindia.co.in",
   "AU Small Finance Bank": "aubank.in"
 };
 
@@ -24,11 +21,8 @@ const BANK_DROPDOWN_OPTIONS = [
   { value: "Bank Of Baroda", name: "Bank of Baroda" },
   { value: "Canara Bank", name: "Canara Bank" },
   { value: "Axis Bank", name: "Axis Bank" },
-  { value: "Union Bank of India", name: "Union Bank of India" },
-  { value: "Indian Bank", name: "Indian Bank" },
   { value: "Airtel Payments Bank", name: "Airtel Payments Bank" },
   { value: "Kotak Mahindra Bank", name: "Kotak Mahindra Bank" },
-  { value: "Bank of India", name: "Bank of India" },
   { value: "AU Small Finance Bank", name: "AU Small Finance Bank" }
 ];
 
@@ -40,10 +34,10 @@ function toggleCustomDropdown() {
 function selectCustomBank(value, name) {
   const select = document.getElementById('bank-select');
   select.value = value;
-  
+
   const displayValue = document.getElementById('custom-select-value');
   const domain = BANK_DOMAINS[value];
-  
+
   if (value && domain) {
     displayValue.innerHTML = `<span style="display:flex; align-items:center; gap:8px;">
       <img src="https://www.google.com/s2/favicons?domain=${domain}&sz=64" class="bank-logo" onerror="this.style.display='none'"> 
@@ -52,7 +46,7 @@ function selectCustomBank(value, name) {
   } else {
     displayValue.innerHTML = `<span style="display:flex; align-items:center; gap:8px;">${name}</span>`;
   }
-  
+
   document.getElementById('custom-select-options').classList.add('hidden');
   selectPaymentBank(); // trigger change
 }
@@ -60,7 +54,7 @@ function selectCustomBank(value, name) {
 function initCustomDropdown() {
   const container = document.getElementById('custom-select-options');
   if (!container) return;
-  
+
   container.innerHTML = BANK_DROPDOWN_OPTIONS.map(opt => {
     const domain = BANK_DOMAINS[opt.value];
     const logoHtml = domain ? `<img src="https://www.google.com/s2/favicons?domain=${domain}&sz=64" class="bank-logo" onerror="this.style.display='none'">` : '';
@@ -356,8 +350,8 @@ async function refreshBankStatus() {
           BANK_DATA[key].overall = b.status === 'DOWN'
             ? 'CRITICAL: Server Down'
             : b.status === 'FLUCTUATING'
-            ? 'Warning: Fluctuating'
-            : 'All Services Operational';
+              ? 'Warning: Fluctuating'
+              : 'All Services Operational';
         }
       });
     }
@@ -395,9 +389,9 @@ function renderLiveBankGrid(banks, lastUpdated) {
   grid.innerHTML = banks.map(b => {
     const statusClass = b.status === 'UP' ? 'grid-status-up'
       : b.status === 'DOWN' ? 'grid-status-down'
-      : 'grid-status-warn';
+        : 'grid-status-warn';
     const staleNote = b.stale ? `<span class="bank-grid-stale">⏱ stale</span>` : '';
-    
+
     const domain = BANK_DOMAINS[b.bank];
     const logoHtml = domain ? `<img src="https://www.google.com/s2/favicons?domain=${domain}&sz=64" class="bank-logo" onerror="this.style.display='none'">` : `<span class="bank-grid-icon">${b.icon}</span>`;
     const statusIcon = b.status === 'UP' ? '✅' : b.status === 'DOWN' ? '❌' : '⚠️';
@@ -451,7 +445,7 @@ function hash(str) {
 function goToLocationChecker() {
   // Hide bank dropdown when switching to checker
   document.getElementById('dash-bank-dropdown')?.classList.add('hidden');
-  
+
   document.getElementById('dashboard-panel').classList.add('hidden');
   document.getElementById('app-main').classList.remove('hidden');
 }
@@ -459,7 +453,7 @@ function goToLocationChecker() {
 function getMyLocation() {
   // Hide bank dropdown when starting GPS fetch
   document.getElementById('dash-bank-dropdown')?.classList.add('hidden');
-  
+
   const btn = document.getElementById('geo-btn');
   btn.textContent = '⏳ Fetching...';
   btn.disabled = true;
@@ -523,7 +517,7 @@ function runCheckWithCoords(name, lat, lng) {
 
 async function runAnalyzing(raw, btn) {
   animateSteps();
-  
+
   try {
     // 1. Geocode
     const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(raw)}&format=json&limit=1`);
@@ -536,8 +530,8 @@ async function runAnalyzing(raw, btn) {
     const res = await fetch('http://localhost:8000/predict', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        lat, 
+      body: JSON.stringify({
+        lat,
         lon,
         bank_name: document.getElementById('bank-select')?.value || null
       })
@@ -705,7 +699,7 @@ let selectedBank = "";
 function selectPaymentBank() {
   const bank = document.getElementById('bank-select').value;
   if (!bank) return;
-  
+
   selectedBank = bank;
   console.log("Bank Selected for future UPI check:", selectedBank);
   // Removed auto-hide: let the user see their choice
@@ -729,7 +723,7 @@ async function showResultsBankStatus() {
       );
       if (match) { liveIcon = match.icon; liveStatus = match.status; }
     }
-  } catch (_) {}
+  } catch (_) { }
 
   try {
     const res = await fetch('http://localhost:8000/bank-predict', {
@@ -828,7 +822,7 @@ function renderBankCardLive(bank, titleId, rowsId, overallId) {
   const isDown = liveStatus === 'DOWN';
   overall.textContent = isOk ? '✅ All Services Operational'
     : isDown ? '❌ Server Currently Down'
-    : '⚠️ Minor Delays / Fluctuating';
+      : '⚠️ Minor Delays / Fluctuating';
   overall.className = `bank-overall-status ${isOk ? 'ok' : isDown ? 'down' : 'warn'}`;
 }
 
