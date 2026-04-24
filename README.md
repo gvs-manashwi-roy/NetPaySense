@@ -1,23 +1,25 @@
 # 🛰️ NetPaySense: AI-Powered UPI Reliability Checker
 
-**NetPaySense** is a real-time diagnostic tool designed to predict the success probability of UPI payments. It combines **Machine Learning (XGBoost/Neural Networks)** with **Live Bank Server Status** to help users decide if it's safe to proceed with a payment at their current location.
+**NetPaySense** is a real-time diagnostic tool designed to predict the success probability of UPI payments. It combines **Dual-Model Machine Learning (XGBoost + Neural Networks)** with **Live Bank Server Health Monitoring** and **Community-Driven Regional Alerts** to help users decide if it's safe to proceed with a payment at their current location.
 
 ---
 
 ## 🚀 Key Features
-- **AI Network Prediction**: Uses trained models to analyze signal strength, latency, and download speeds to predict network quality.
-- **Smart Bank Selection**: Choose your payment bank once, and get tailored success rates for that specific bank's server.
-- **Real-Time GPS Integration**: Instantly fetch your live coordinates and area name to run local diagnostics.
-- **Dynamic Risk Meter**: A visual gauge that shows "High," "Moderate," or "Low" risk based on combined network and bank data.
-- **Privacy First**: Designed for local diagnostics with clear data transparency.
+- **Dual AI Network Prediction**: Hybrid analysis using Ookla-trained Neural Networks and local XGBoost signal models.
+- **Live Bank Server Scraper**: Real-time health monitoring of major Indian banks, auto-refreshing every minute.
+- **Community Alert System**: Crowdsourced reporting that warns users of regional payment failures within a 1km radius.
+- **Premium Glassmorphism UI**: A state-of-the-art mobile-first dashboard with dynamic risk gauges and bank health grids.
+- **Smart GPS Integration**: Instantly fetch live coordinates and reverse-geocode area names for precise local diagnostics.
 
 ---
 
 ## 🛠️ Technology Stack
 - **Backend**: [FastAPI](https://fastapi.tiangolo.com/) (Python)
 - **AI/ML**: [XGBoost](https://xgboost.readthedocs.io/), [PyTorch](https://pytorch.org/), [Scikit-learn](https://scikit-learn.org/)
-- **Frontend**: Vanilla JavaScript, CSS3 (Modern Glassmorphism Design), HTML5
+- **Data & GIS**: [GeoPandas](https://geopandas.org/), [Shapely](https://shapely.readthedocs.io/), [KDTree](https://scipy.org/)
+- **Frontend**: Vanilla JavaScript (ES6+), CSS3 (Modern Glassmorphism), HTML5
 - **Mapping**: [Leaflet.js](https://leafletjs.com/) & OpenStreetMap
+- **Automation**: [APScheduler](https://apscheduler.readthedocs.io/) for background bank status scraping.
 
 ---
 
@@ -29,7 +31,7 @@ git clone https://github.com/gvs-manashwi-roy/NetPaySense.git
 cd NetPaySense
 ```
 
-### 2. Set Up Virtual Environment (Recommended)
+### 2. Set Up Virtual Environment
 ```bash
 python -m venv .venv
 # On Windows:
@@ -40,7 +42,7 @@ source .venv/bin/activate
 
 ### 3. Install Dependencies
 ```bash
-pip install fastapi uvicorn xgboost scikit-learn torch pydantic
+pip install fastapi uvicorn xgboost scikit-learn torch pydantic pandas numpy geopandas shapely apscheduler requests
 ```
 
 ---
@@ -57,18 +59,19 @@ pip install fastapi uvicorn xgboost scikit-learn torch pydantic
 ---
 
 ## 🔌 API Endpoints
-- `POST /predict`: Sends network parameters to the AI model for quality prediction.
-- `POST /bank-predict`: Combines network scores with bank server status (UP/FLUCTUATING/DOWN) for a final success rate.
-- `GET /banks`: Fetches the current list of supported banks and their simulated live status.
-- `GET /docs`: Interactive Swagger UI for testing all endpoints.
+- `POST /predict`: Spatial-ML prediction combining KDTree lookup with NN/XGBoost quality models. Includes `community_alert` checks.
+- `POST /bank-predict`: Hybrid scoring that weights network quality against real-time bank server health.
+- `GET /bank-status`: Returns a live JSON feed of all bank health statuses from the automated scraper.
+- `POST /feedback`: Endpoint for the Community Alert system to record local payment outcomes.
+- `GET /docs`: Full interactive API documentation (Swagger UI).
 
 ---
 
-## 🧠 Model Logic (Combined Score)
-The final **UPI Success Chance** is calculated using a multiplier based on the bank's health:
-- **UP**: 100% of the Network Score.
-- **FLUCTUATING**: 60% of the Network Score (40% penalty).
-- **DOWN**: Forced to **1.5%** success rate (High Risk).
+## 🧠 Model Logic & Risk Assessment
+The final **UPI Success Chance** is a hybrid score calculated by:
+1. **Network Quality**: Neural Network analysis of local Ookla tiles.
+2. **Community Feedback**: Regional failure reports reported within the last 30 minutes.
+3. **Bank Health**: If a bank server is detected as **DOWN** or **FLUCTUATING**, it overrides the network score to force a "High Risk" warning.
 
 ---
 
