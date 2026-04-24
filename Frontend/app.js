@@ -362,7 +362,8 @@ async function runAnalyzing(raw, btn) {
       upi: data.upi,
       badge: data.badge,
       dbm: data.dbm,
-      type: data.type
+      type: data.type,
+      best_network: data.best_network
     };
     currentLat = data.lat;
     currentLng = data.lon;
@@ -371,7 +372,7 @@ async function runAnalyzing(raw, btn) {
       document.getElementById('loc-name').textContent = raw;
       document.getElementById('loc-coords').textContent = `${data.lat.toFixed(4)}, ${data.lon.toFixed(4)}`;
       populateSignal(currentSig);
-      populateRecs(currentSig.tier);
+      populateRecs(currentSig.tier, currentSig.best_network);
       showResultsBankStatus(); // <-- NEW: Auto-show bank status
       saveRecent(raw, { lat: data.lat, lng: data.lon }, currentSig);
       btn.textContent = 'Check'; btn.disabled = false;
@@ -401,14 +402,15 @@ async function runAnalyzingWithCoords(name, lat, lng, btn) {
       upi: data.upi,
       badge: data.badge,
       dbm: data.dbm,
-      type: data.type
+      type: data.type,
+      best_network: data.best_network
     };
 
     setTimeout(() => {
       document.getElementById('loc-name').textContent = name;
       document.getElementById('loc-coords').textContent = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
       populateSignal(currentSig);
-      populateRecs(currentSig.tier);
+      populateRecs(currentSig.tier, currentSig.best_network);
       showResultsBankStatus(); // <-- NEW: Auto-show bank status
       saveRecent(name, { lat, lng }, currentSig);
       btn.textContent = 'Check'; btn.disabled = false;
@@ -442,9 +444,11 @@ function populateSignal(sig) {
   setTimeout(() => drawGauge('results-risk-gauge', 'results-risk-label', sig.tier), 100);
 }
 
-function populateRecs(tier) {
+function populateRecs(tier, operator) {
   const list = document.getElementById('rec-list');
   list.innerHTML = '';
+  console.log(operator);
+  RECS[tier][0].text = `<strong>Recommended Operator:</strong> ${operator}`;
   RECS[tier].forEach(r => {
     const li = document.createElement('li');
     li.innerHTML = `<div class="rec-icon-box">${r.icon}</div><span>${r.text}</span>`;

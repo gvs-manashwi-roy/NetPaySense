@@ -20,5 +20,5 @@ params = {
     "format": "json"
 }
 
-response = find_nearest_tower(12.309501537005637, 76.65888774337517, API_KEY)
+response = find_nearest_tower(12.284765, 76.627512, API_KEY)
 print(response)
