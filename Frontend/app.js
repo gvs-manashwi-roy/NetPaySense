@@ -1,15 +1,15 @@
 // ── Global Config ──
 const BANK_DOMAINS = {
-  "SBI": "sbi.co.in",
-  "HDFC": "hdfcbank.com",
-  "ICICI": "icicibank.com",
-  "PNB": "pnbindia.in",
-  "BOB": "bankofbaroda.in",
-  "CANARA": "canarabank.com",
-  "AXIS": "axisbank.com",
-  "AIRTEL": "airtel.in",
-  "KOTAK": "kotak.com",
-  "AU": "aubank.in"
+  "State Bank of India": "sbi.co.in",
+  "HDFC Bank": "hdfcbank.com",
+  "ICICI Bank": "icicibank.com",
+  "Punjab National Bank": "pnbindia.in",
+  "Bank Of Baroda": "bankofbaroda.in",
+  "Canara Bank": "canarabank.com",
+  "Axis Bank": "axisbank.com",
+  "Airtel Payments Bank": "airtel.in",
+  "Kotak Mahindra Bank": "kotak.com",
+  "AU Small Finance Bank": "aubank.in"
 };
 
 const BANK_DROPDOWN_OPTIONS = [
@@ -216,7 +216,7 @@ function renderLiveBankGrid(banks, lastUpdated) {
 
     const domain = BANK_DOMAINS[b.bank];
     const logoSrc = domain ? `https://www.google.com/s2/favicons?domain=${domain}&sz=128` : `https://api.dicebear.com/7.x/initials/svg?seed=${b.bank}&backgroundColor=0ea5e9`;
-    
+
     return `
       <div class="bank-grid-card fade-in">
         <div class="bank-grid-logo-wrap">
@@ -433,8 +433,9 @@ const BANK_DATA = {
 };
 
 let currentSig = null;
-let currentLat = 12.9716;
 let currentLng = 77.5946;
+let rawLat = 0, rawLng = 0; // 🔥 Store actual GPS coords for feedback
+let isLiveSession = false; // 🔥 Track if current check is GPS-verified
 let recents = JSON.parse(localStorage.getItem('nps_recents') || '[]');
 
 function hash(str) {
@@ -447,7 +448,7 @@ function hash(str) {
 function goToLocationChecker() {
   // Hide bank dropdown when switching to checker
   document.getElementById('dash-bank-dropdown')?.classList.add('hidden');
-  
+
   document.getElementById('dashboard-panel').classList.add('hidden');
   document.getElementById('app-main').classList.remove('hidden');
 }
@@ -455,7 +456,7 @@ function goToLocationChecker() {
 function getMyLocation() {
   // Hide bank dropdown when starting GPS fetch
   document.getElementById('dash-bank-dropdown')?.classList.add('hidden');
-  
+
   const btn = document.getElementById('geo-btn');
   btn.textContent = '⏳ Fetching...';
   btn.disabled = true;
@@ -484,6 +485,7 @@ function getMyLocation() {
 }
 
 function useLiveLocation(lat, lng, name) {
+  isLiveSession = true; // ✅ This is a live GPS check
   const btn = document.getElementById('geo-btn');
   btn.textContent = '📍 Fetch My Location';
   btn.disabled = false;
@@ -496,6 +498,7 @@ function useLiveLocation(lat, lng, name) {
 }
 
 function runCheck() {
+  isLiveSession = false; // ❌ This is a manual lookup
   // Hide bank dropdown when starting check
   document.getElementById('dash-bank-dropdown')?.classList.add('hidden');
 
@@ -519,14 +522,25 @@ function runCheckWithCoords(name, lat, lng) {
 
 async function runAnalyzing(raw, btn) {
   animateSteps();
-  
+
   try {
-    // 1. Geocode
-    const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(raw)}&format=json&limit=1`);
-    const geoData = await geoRes.json();
-    if (!geoData.length) throw new Error('Location not found');
-    const lat = parseFloat(geoData[0].lat);
-    const lon = parseFloat(geoData[0].lon);
+    let lat, lon;
+    const coordMatch = raw.match(/^([-+]?\d+\.?\d*)\s*,\s*([-+]?\d+\.?\d*)$/);
+
+    if (coordMatch) {
+      // Direct coordinates entered
+      lat = parseFloat(coordMatch[1]);
+      lon = parseFloat(coordMatch[2]);
+    } else {
+      // 1. Geocode text
+      const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(raw)}&format=json&limit=1`);
+      const geoData = await geoRes.json();
+      if (!geoData.length) throw new Error('Location not found');
+      lat = parseFloat(geoData[0].lat);
+      lon = parseFloat(geoData[0].lon);
+    }
+
+    rawLat = lat; rawLng = lon; // ✅ Save for feedback check
 
     // 2. Predict
     const res = await fetch('/predict', {
@@ -536,7 +550,7 @@ async function runAnalyzing(raw, btn) {
     });
     if (!res.ok) throw new Error(`Server Error: ${res.status}`);
     const data = await res.json();
-    lastNetworkScore = parseFloat(data.upi.match(/\d+/) || 90); 
+    lastNetworkScore = parseFloat(data.upi.match(/\d+/) || 90);
     currentSig = {
       tier: data.tier,
       label: data.label,
@@ -556,7 +570,7 @@ async function runAnalyzing(raw, btn) {
         populateSignal(currentSig);
         populateRecs(currentSig.tier);
         showResultsBankStatus();
-        
+
         const alertBanner = document.getElementById('community-alert-banner');
         if (alertBanner) {
           if (data.community_alert) alertBanner.classList.remove('hidden');
@@ -565,6 +579,11 @@ async function runAnalyzing(raw, btn) {
 
         saveRecent(raw, { lat: data.lat, lng: data.lon }, currentSig);
         btn.textContent = 'Check'; btn.disabled = false;
+
+        // 🔥 Show/Hide Feedback button based on Live status
+        const fbBtn = document.getElementById('results-feedback-btn');
+        if (fbBtn) fbBtn.style.display = isLiveSession ? 'block' : 'none';
+
         goStep(3);
       } catch (innerErr) {
         console.error("Transition error:", innerErr);
@@ -581,6 +600,7 @@ async function runAnalyzing(raw, btn) {
 }
 
 async function runAnalyzingWithCoords(name, lat, lng, btn) {
+  rawLat = lat; rawLng = lng; // ✅ Save for feedback
   animateSteps();
   try {
     const res = await fetch('/predict', {
@@ -608,7 +628,7 @@ async function runAnalyzingWithCoords(name, lat, lng, btn) {
         populateSignal(currentSig);
         populateRecs(currentSig.tier);
         showResultsBankStatus();
-        
+
         const alertBanner = document.getElementById('community-alert-banner');
         if (alertBanner) {
           if (data.community_alert) alertBanner.classList.remove('hidden');
@@ -617,6 +637,11 @@ async function runAnalyzingWithCoords(name, lat, lng, btn) {
 
         saveRecent(name, { lat, lng }, currentSig);
         btn.textContent = 'Check'; btn.disabled = false;
+
+        // 🔥 Show/Hide Feedback button based on Live status
+        const fbBtn = document.getElementById('results-feedback-btn');
+        if (fbBtn) fbBtn.style.display = isLiveSession ? 'block' : 'none';
+
         goStep(3);
       } catch (innerErr) {
         console.error("Transition error:", innerErr);
@@ -733,7 +758,7 @@ let selectedBank = "";
 function selectPaymentBank() {
   const bank = document.getElementById('bank-select').value;
   if (!bank) return;
-  
+
   selectedBank = bank;
   console.log("Bank Selected for future UPI check:", selectedBank);
   // Removed auto-hide: let the user see their choice
@@ -875,12 +900,11 @@ async function submitFeedbackNew() {
   if (!fbOutcome) return;
 
   // Continuous Learning / RL Data Submission
-  const lastCheck = JSON.parse(localStorage.getItem('last_check_data')) || {};
   const feedbackData = {
-    lat: lastCheck.lat || 0,
-    lon: lastCheck.lng || 0,
+    lat: rawLat || 0,
+    lon: rawLng || 0,
     outcome: fbOutcome,
-    metrics: lastCheck.metrics || {}
+    metrics: currentSig?.metrics || {}
   };
 
   try {

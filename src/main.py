@@ -42,9 +42,10 @@ async def startup_event():
     """Start the background scraper when the API starts."""
     clean_old_data() # 🔥 Run cleanup on startup
     
-    # Start the background scraper (Official IBA Bank Sewa)
+    # Start the background tasks
     scheduler = BackgroundScheduler(daemon=True)
-    scheduler.add_job(fetch_bank_health, 'interval', minutes=5) # 5 mins is safer for rate limits
+    scheduler.add_job(fetch_bank_health, 'interval', minutes=5)
+    scheduler.add_job(clean_old_data, 'interval', hours=12) # 🔥 Cleanup every 12 hours
     scheduler.start()
     
     # Run the first scrape immediately in a separate thread so it doesn't block API startup
@@ -144,31 +145,31 @@ class FeedbackRequest(BaseModel):
     metrics: dict
 
 # ----------- UI LOGIC -----------
-def get_ui_data(quality_score, community_alert=False):
-    # Class mapping: 2:Good, 1:Mid, 0:Poor
+def get_ui_data(quality_score, upi_score, community_alert=False):
+    # Class mapping: 0:Poor, 1:Mid, 2:Good
     
     # Community alert significantly increases risk
     if community_alert:
         return {
-            "tier": "poor", "bars": 1, "dbm": -105, "label": "Community Alert",
-            "upi": "Low - 10-20%", "badge": "COMMUNITY DOWNTIME", 
-            "rec": "STOP: Multiple payment failures reported here recently. Use Cash.", "type": "4G"
+            "tier": "poor", "bars": 1, "dbm": -105, "label": "Regional Failures",
+            "upi": f"Critical - {min(upi_score, 15):.1f}%", "badge": "COMMUNITY DOWNTIME", 
+            "rec": "🚨 Multiple payment failures reported here. Use Cash.", "type": "4G"
         }
 
-    if quality_score >= 1.8:
+    if quality_score == 2: # Good
         return {
-            "tier": "good", "bars": 5, "dbm": -65, "label": "Excellent Signal",
-            "upi": "High - 92%", "badge": "Low Risk", "rec": "Safe to proceed with UPI", "type": "5G"
+            "tier": "good", "bars": 5, "dbm": -65, "label": "High Performance",
+            "upi": f"Excellent - {upi_score:.1f}%", "badge": "Low Risk", "rec": "Safe to proceed with any UPI amount.", "type": "5G"
         }
-    elif quality_score >= 0.8:
+    elif quality_score == 1: # Moderate
         return {
-            "tier": "mid", "bars": 3, "dbm": -88, "label": "Moderate Signal",
-            "upi": "Medium - 64%", "badge": "Medium Risk", "rec": "Proceed with caution. WiFi preferred.", "type": "4G"
+            "tier": "mid", "bars": 3, "dbm": -88, "label": "Stable Connection",
+            "upi": f"Fair - {upi_score:.1f}%", "badge": "Medium Risk", "rec": "Proceed with caution. WiFi preferred.", "type": "4G"
         }
-    else:
+    else: # Poor
         return {
-            "tier": "poor", "bars": 1, "dbm": -110, "label": "Poor Signal",
-            "upi": "Low - 24%", "badge": "High Risk", "rec": "Carry Cash - Likely to fail", "type": "4G"
+            "tier": "poor", "bars": 1, "dbm": -110, "label": "Unstable Signal",
+            "upi": f"Risky - {upi_score:.1f}%", "badge": "High Risk", "rec": "Carry Cash - High chance of timeout.", "type": "4G"
         }
 
 # ----------- MAIN PREDICTION -----------
@@ -198,19 +199,50 @@ async def predict(req: PredictionRequest):
         with torch.no_grad():
             m1_out = ookla_model(torch.tensor(m1_scaled, dtype=torch.float32))
             m1_quality = torch.argmax(m1_out, dim=1).item()
+            
+            # 🔥 Aggressive Dynamic Engine
+            probs = torch.softmax(m1_out, dim=1)[0].detach().numpy()
+            
+            # Base logic: Use probability to find the "Anchor" score
+            # (98% for Good, 65% for Mid, 15% for Poor)
+            base_anchor = (probs[0] * 15.0 + probs[1] * 65.0 + probs[2] * 98.0)
+            
+            # 🏎️ Speed & Latency Impact (Stronger)
+            dn = nearest['download_mbps']
+            lat = nearest['latency_ms']
+            
+            # Calculate a "Performance Offset"
+            if m1_quality == 2: # Good (12Mbps base)
+                offset = (dn - 12) * 0.4 - (lat - 30) * 0.15
+            elif m1_quality == 1: # Mid (3Mbps base)
+                offset = (dn - 5) * 2.0 - (lat - 80) * 0.25
+            else: # Poor
+                offset = (dn - 1) * 5.0 - (lat - 150) * 0.1
+                
+            # 🌊 Micro-fluctuation (to mimic real-time network jitter)
+            jitter = (np.random.random() - 0.5) * 0.5 
+            
+            upi_score = base_anchor + offset + jitter
+            
+            # Final Safety Clamp
+            upi_score = max(5.0, min(99.7, upi_score))
 
         if req.rsrp is not None and req.rsrq is not None:
             m2_features = np.array([[req.rsrp, req.rsrq, req.snr or 0, req.cqi or 10, req.dbm or -90]])
             m2_quality = signal_model.predict(m2_features)[0]
             final_quality = min(m1_quality, m2_quality)
+            
+            # If Model 2 (Signal) is worse than Model 1 (Speeds), dampen the score
+            if m2_quality < m1_quality:
+                upi_score *= 0.8 if m2_quality == 1 else 0.4
         else:
             final_quality = m1_quality
             m2_quality = None
 
         # 2. Community Check
-        has_alert = check_nearby_failures(authentic_lat, authentic_lon)
+        has_alert = check_nearby_failures(req.lat, req.lon)
         
-        ui_data = get_ui_data(final_quality, has_alert)
+        ui_data = get_ui_data(final_quality, upi_score, has_alert)
         operators = get_operator_performance(req.lat, req.lon)
         best_operator = suggest_best_operator(operators)
 
@@ -308,22 +340,33 @@ def get_all_feedback():
         return df.dropna(subset=['timestamp'])
     except: return pd.DataFrame()
 
-def check_nearby_failures(lat, lon, radius_km=1.0):
+def check_nearby_failures(lat, lon, radius_km=2.0):
     try:
         df = get_all_feedback()
         if df.empty: return False
         
-        # 30-minute window is more realistic for regional issues
+        # 30-minute window
         threshold = datetime.now() - timedelta(minutes=30)
-        recent_failed = df[(df['outcome'] == 'failed') & (df['timestamp'] >= threshold)]
+        recent_failed = df[(df['outcome'] == 'failed')]
         
-        for _, row in recent_failed.iterrows():
+        # Filter by time separately to debug
+        recent_failed['timestamp'] = pd.to_datetime(recent_failed['timestamp'])
+        recent_failed = recent_failed[recent_failed['timestamp'] >= threshold]
+        
+        print(f"🔍 DEBUG: Checking alerts near {lat}, {lon}")
+        print(f"🔍 DEBUG: Recent failures in last 30 mins: {len(recent_failed)}")
+        
+        for i, row in recent_failed.iterrows():
             # Robust Euclidean distance approximation
             d_lat = float(row['lat']) - lat
             d_lon = (float(row['lon']) - lon) * np.cos(np.radians(lat))
             dist = (d_lat**2 + d_lon**2)**0.5 * 111.32
             
-            if dist <= radius_km: return True
+            print(f"   -> Found failure at {row['lat']}, {row['lon']} (Dist: {dist:.3f} km)")
+            
+            if dist <= radius_km: 
+                print("🚨 ALERT TRIGGERED!")
+                return True
         return False
     except Exception as e:
         print(f"Community Alert Error: {e}")

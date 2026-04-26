@@ -21,7 +21,7 @@ CSV_FILE = DATA_PATH / "bank_health_log2.csv"
 LOG_FILE = DATA_PATH / "bank_monitor.log"
 
 STALE_THRESHOLD_MINUTES = 20
-DATA_RETENTION_HOURS = 24
+DATA_RETENTION_HOURS = 12
 
 # ─────────────────────────────────────────────
 # LOGGING
