@@ -152,12 +152,37 @@ async def predict(req: PredictionRequest):
         })
 
     try:
-        # KDTree nearest lookup
+        # KDTree nearest lookup logic updated for smart map enhancement
         dist, idx = tree.query([req.lat, req.lon])
         nearest = look_up_df.iloc[idx]
 
         authentic_lat = float(nearest['lat'])
         authentic_lon = float(nearest['lon'])
+
+        # ----------- SMART MAP ENHANCEMENT (ADDED) -----------
+
+        try:
+            distances, indices = tree.query([req.lat, req.lon], k=10)
+
+            best_score = -999
+            best_data = nearest  # default fallback
+
+            for i in indices:
+                row = look_up_df.iloc[i]
+                score = row['download_mbps'] - row['latency_ms']
+
+                if score > best_score:
+                    best_score = score
+                    best_data = row
+
+        # override ONLY if better found
+            if best_data is not None:
+                nearest = best_data
+                authentic_lat = float(nearest['lat'])
+                authentic_lon = float(nearest['lon'])
+
+        except Exception as e:
+            print("Smart map fallback:", e)
 
         # Model 1
         m1_features = np.array([[
@@ -193,6 +218,10 @@ async def predict(req: PredictionRequest):
         return {
             "lat": authentic_lat,
             "lon": authentic_lon,
+            "better_location": {
+                  "lat": authentic_lat,
+                  "lon": authentic_lon
+                },  #✅ NEW betterlocation returned as per the smart map enhancement
             "tier": ui_data["tier"],
             "bars": ui_data["bars"],
             "dbm": ui_data["dbm"],
@@ -211,6 +240,7 @@ async def predict(req: PredictionRequest):
                 "download": f"{nearest['download_mbps']:.2f} Mbps",
                 "latency": f"{nearest['latency_ms']:.1f} ms"
             }
+            
         }
 
     except Exception as e:
