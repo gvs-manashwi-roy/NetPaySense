@@ -16,10 +16,16 @@
 </head>
 
 <body>
-  <button onclick="applyKannadaTranslation()" 
-  style="position:fixed; top:20px; right:20px; z-index:9999;">
-  Kannada
-  </button>
+  <div style="position:fixed; top:90px; right:20px; z-index:9999;">
+  <select onchange="changeLang(this.value)" 
+  style="padding:8px; border-radius:8px;">
+    <option value="">🌐 Language</option>
+    <option value="kn">Kannada</option>
+    <option value="hi">Hindi</option>
+    <option value="ta">Tamil</option>
+    <option value="te">Telugu</option>
+  </select>
+</div>
 
   <div class="shell">
 
@@ -607,6 +613,14 @@
     </div>
 
   </div>
+<script>
+function changeLang(lang) {
+  if (lang === "kn") applyKannadaTranslation();
+  if (lang === "hi") applyHindiTranslation();
+  if (lang === "ta") applyTamilTranslation();
+  if (lang === "te") applyTeluguTranslation();
+}
+</script>
 <script src="kannada.js"></script>
 <script src="app.js"></script>
 </body>
