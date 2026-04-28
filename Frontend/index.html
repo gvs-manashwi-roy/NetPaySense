@@ -24,6 +24,7 @@
     <option value="hi">Hindi</option>
     <option value="ta">Tamil</option>
     <option value="te">Telugu</option>
+    <option value="en">English</option>
   </select>
 </div>
 
@@ -619,6 +620,8 @@ function changeLang(lang) {
   if (lang === "hi") applyHindiTranslation();
   if (lang === "ta") applyTamilTranslation();
   if (lang === "te") applyTeluguTranslation();
+
+  if (lang === "en") location.reload(); // 🔥 IMPORTANT
 }
 </script>
 <script src="kannada js (1) (1).js"></script>
