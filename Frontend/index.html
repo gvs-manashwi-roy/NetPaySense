@@ -58,7 +58,7 @@
           <span class="ob-dot" id="dot-1"></span>
           <span class="ob-dot" id="dot-2"></span>
         </div>
-        <button class="next-btn ob-next-btn" id="ob-next-btn" onclick="obNext()">Next →</button>
+        <button class="next-btn ob-next-btn" id="ob-next-btn" onclick="obNext()">➡️ <span data-i18n="next">Next</span> →</button>
         <button class="ob-skip-btn" onclick="obSkip()">Don't show again</button>
       </div>
     </div>
@@ -267,7 +267,7 @@
         <!-- 1. Choose Bank -->
         <button class="next-btn" onclick="document.getElementById('dash-bank-dropdown').classList.toggle('hidden')"
           style="background:linear-gradient(135deg,#0ea5e9,#2563eb)">
-          🏦 Choose Bank
+          🏦 <span data-i18n="choose_bank">Choose Bank</span>
         </button>
 
         <div id="dash-bank-dropdown" class="hidden"
@@ -294,13 +294,13 @@
         <!-- 2. Check New Location -->
         <button class="next-btn" onclick="goToLocationChecker()"
           style="background:linear-gradient(135deg,#0ea5e9,#2563eb); margin-bottom:12px;">
-          🔍 Check New Location
+          🔄 <span data-i18n="check_location">Check New Location</span>
         </button>
 
         <!-- 3. Fetch My Location -->
         <button class="next-btn" id="geo-btn" onclick="getMyLocation()"
           style="background:linear-gradient(135deg,#0ea5e9,#2563eb); margin-bottom:20px;">
-          📍 Fetch My Location
+          📍 <span data-i18n="Fetch My Location">Fetch My Location</span>
         </button>
 
         <!-- Skeleton loader (shown while fetching) -->
@@ -583,7 +583,7 @@
               <span class="fb-star" onclick="selectStar(4)">★</span>
               <span class="fb-star" onclick="selectStar(5)">★</span>
             </div>
-            <button class="next-btn" onclick="submitFeedbackNew()" style="margin-top:18px">Submit Feedback</button>
+            <button class="next-btn" onclick="submitFeedbackNew()" style="margin-top:18px">✅ <span data-i18n="submit">Submit</span> Feedback</button>
           </div>
         </div>
         <div class="card feedback-card hidden" id="feedback-thanks-card">
@@ -628,6 +628,17 @@ function changeLang(lang) {
   if (lang === "ta") applyTamilTranslation();
   if (lang === "te") applyTeluguTranslation();
 }
+window.addEventListener("DOMContentLoaded", () => {
+  document.querySelectorAll("[data-i18n]").forEach(el => {
+    el.dataset.en = el.innerText;
+  });
+});
+
+// your existing function
+function changeLang(lang) {
+  ...
+}
+
 </script>
 <script src="kannada js (1) (1).js"></script>
 <script src="hindi.js"></script>
