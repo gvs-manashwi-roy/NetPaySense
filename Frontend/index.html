@@ -617,16 +617,24 @@
 <script>
 function changeLang(lang) {
 
-  // STEP 1: reset everything back to English first
-  document.querySelectorAll("[data-i18n]").forEach(el => {
-    el.innerText = el.getAttribute("data-i18n");
-  });
+  const map = {
+    "kn": KANNADA_TRANSLATIONS,
+    "hi": HINDI_TRANSLATIONS,
+    "ta": TAMIL_TRANSLATIONS,
+    "te": TELUGU_TRANSLATIONS
+  };
 
-  // STEP 2: apply selected language
-  if (lang === "kn") applyKannadaTranslation();
-  if (lang === "hi") applyHindiTranslation();
-  if (lang === "ta") applyTamilTranslation();
-  if (lang === "te") applyTeluguTranslation();
+  const selected = map[lang];
+
+  if (!selected) return;
+
+  document.querySelectorAll("[data-i18n]").forEach(el => {
+    const key = el.getAttribute("data-i18n");
+
+    if (selected[key]) {
+      el.innerText = selected[key];
+    }
+  });
 }
 window.addEventListener("DOMContentLoaded", () => {
   document.querySelectorAll("[data-i18n]").forEach(el => {
