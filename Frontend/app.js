@@ -288,11 +288,9 @@ function getMyLocation() {
     async pos => {
       const lat = pos.coords.latitude, lng = pos.coords.longitude;
       let name = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
-      // const name = "Your Location";
       try {
         const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`);
         const data = await res.json();
-        // const name = "Your Location";
         const a = data.address;
         const area = a.suburb || a.neighbourhood || a.village || a.town || a.city || a.county || '';
         const city = a.city || a.town || a.state_district || '';
@@ -300,12 +298,7 @@ function getMyLocation() {
       } catch { }
       useLiveLocation(lat, lng, name);
     },
-    () => useLiveLocation(12.9716, 77.5946, 'Bengaluru'),
-    {
-       enableHighAccuracy: false,   // 🔥 faster
-       timeout: 5000,               // max 5 sec
-       maximumAge: 60000            // reuse cached location
-    }
+    () => useLiveLocation(12.9716, 77.5946, 'Bengaluru')
   );
 }
 
@@ -333,23 +326,6 @@ function runCheck() {
   document.getElementById('empty-state').classList.add('hidden');
   goStep(2);
   runAnalyzing(raw, btn);
-}
-//gets the distance between two lat/lng points in meters using the Haversine formula such that the user moves to better network location if available
-function getDistance(lat1, lon1, lat2, lon2) {
-  const R = 6371e3;
-  const φ1 = lat1 * Math.PI/180;
-  const φ2 = lat2 * Math.PI/180;
-  const Δφ = (lat2-lat1) * Math.PI/180;
-  const Δλ = (lon2-lon1) * Math.PI/180;
-
-  const a =
-    Math.sin(Δφ/2) * Math.sin(Δφ/2) +
-    Math.cos(φ1) * Math.cos(φ2) *
-    Math.sin(Δλ/2) * Math.sin(Δλ/2);
-
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-
-  return R * c;
 }
 
 function runCheckWithCoords(name, lat, lng) {
@@ -401,7 +377,7 @@ async function runAnalyzing(raw, btn) {
       saveRecent(raw, { lat: data.lat, lng: data.lon }, currentSig);
       btn.textContent = 'Check'; btn.disabled = false;
       goStep(3);
-    }, 300);
+    }, 1500);
 
   } catch (err) {
     alert(err.message || 'Error connecting to backend');
@@ -418,24 +394,7 @@ async function runAnalyzingWithCoords(name, lat, lng, btn) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ lat, lon: lng })
     });
-
     const data = await res.json();
-    //stores data
-    window.lastPredictionData = data;
-    currentLat = lat;
-    currentLng = lng;
-    // try {
-    //   updateMapWithPrediction(data);
-    // } catch (e) {
-    //   console.log("Map update failed:", e);
-    // }
-    setTimeout(() => {
-  if (map) {
-    updateMapWithPrediction(data);
-  } else {
-    console.log("Map not ready yet");
-  }
-}, 500);
 
     currentSig = {
       tier: data.tier,
@@ -448,59 +407,18 @@ async function runAnalyzingWithCoords(name, lat, lng, btn) {
     };
 
     setTimeout(() => {
-
       document.getElementById('loc-name').textContent = name;
-      document.getElementById('loc-coords').textContent =
-        `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
-
+      document.getElementById('loc-coords').textContent = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
       populateSignal(currentSig);
       populateRecs(currentSig.tier, currentSig.best_network);
-
-      // 🔥 Smart map recommendation (clean version)
-      const recBox = document.getElementById("rec-list");
-
-      if (recBox && data.better_location) {
-  const dist = getDistance(
-    lat, lng,
-    data.better_location.lat,
-    data.better_location.lon
-  );
-
-  if (dist < 20) {
-    recBox.innerHTML = `<li>✅ You are already in a better network area</li>`;
-  } else {
-    recBox.innerHTML = `<li>📍 Move ${Math.round(dist)} meters for better network</li>`;
-  }
-
-  // THIS PART HERE (IMPORTANT)  it updates the same advice text in the map overlay
-  const adviceText = document.getElementById("network-advice");
-
-  if (adviceText) {
-    if (dist < 20) {
-      adviceText.textContent = "✅ You are already in best network zone";
-    } else {
-      adviceText.textContent = `📍 Move ${Math.round(dist)} meters for better network`;
-    }
-  }
-}
-
-      showResultsBankStatus();
+      showResultsBankStatus(); // <-- NEW: Auto-show bank status
       saveRecent(name, { lat, lng }, currentSig);
-
-      btn.textContent = 'Check';
-      btn.disabled = false;
-
+      btn.textContent = 'Check'; btn.disabled = false;
       goStep(3);
-
-    }, 300);
-
+    }, 1500);
   } catch (err) {
-    console.error(err);
     alert('Backend Error');
-
-    btn.textContent = 'Check';
-    btn.disabled = false;
-
+    btn.textContent = 'Check'; btn.disabled = false;
     goStep(1);
   }
 }
@@ -793,34 +711,6 @@ function sendAiMsg(text, fromInput = false) {
     body.scrollTop = body.scrollHeight;
   }, 1000);
 }
-//function which updates the smart map with better location prediction from the backend.
-function updateMapWithPrediction(apiData) {
-  if (!apiData || !apiData.better_location) return;
-
-  const betterLat = apiData.better_location.lat;
-  const betterLng = apiData.better_location.lon;
-
-  if (!map) return;
-
-  // remove old circle
-  if (betterNetworkCircle) {
-    map.removeLayer(betterNetworkCircle);
-  }
-
-  // create new dynamic circle
-  betterNetworkCircle = L.circle([betterLat, betterLng], {
-    color: '#22c55e',
-    fillColor: '#22c55e',
-    fillOpacity: 0.2,
-    radius: 300
-  }).addTo(map).bindPopup('Better Network Zone');
-  // 🔥 show both points
-  map.fitBounds([
-    [currentLat, currentLng],
-    [betterLat, betterLng]
-  ], { padding: [50, 50] });
-}
-
 
 // ── Dashboard Tabs ──
 function switchDashboardTab(tabId, el) {
@@ -844,25 +734,20 @@ function initMap() {
       map = L.map('real-map').setView([currentLat, currentLng], 16);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(map);
       mapMarker = L.marker([currentLat, currentLng]).addTo(map).bindPopup('<b>You are here</b>', { closeOnClick: false, autoClose: false }).openPopup();
-      // betterNetworkCircle = L.circle([currentLat + 0.001, currentLng + 0.0015], { color: '#22c55e', fillColor: '#22c55e', fillOpacity: 0.2, radius: 100 }).addTo(map).bindPopup('Better Network Zone');
-    // it makes the map fly static in the smart network map
-  } else {
+      betterNetworkCircle = L.circle([currentLat + 0.001, currentLng + 0.0015], { color: '#22c55e', fillColor: '#22c55e', fillOpacity: 0.2, radius: 100 }).addTo(map).bindPopup('Better Network Zone');
+    } else {
       map.invalidateSize();
       map.flyTo([currentLat, currentLng], 16, { duration: 1 });
       mapMarker.setLatLng([currentLat, currentLng]).openPopup();
-      // betterNetworkCircle.setLatLng([currentLat + 0.001, currentLng + 0.0015]);
+      betterNetworkCircle.setLatLng([currentLat + 0.001, currentLng + 0.0015]);
     }
   };
   render();
-  //apply smart map after the map loads
-  if (window.lastPredictionData) {
-  updateMapWithPrediction(window.lastPredictionData);
-}
   if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(pos => {
       currentLat = pos.coords.latitude; currentLng = pos.coords.longitude;
       render();
-    }, err => { }, { enableHighAccuracy: false, timeout: 3000 }); //changed to 3s timeout for faster fallback
+    }, err => { }, { enableHighAccuracy: true, timeout: 5000 });
   }
 }
 
