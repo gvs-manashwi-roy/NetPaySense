@@ -276,6 +276,7 @@ function initScrollTop() {
 
 // ── Risk Gauge (Canvas) ──
 // ── Risk Gauge (Canvas) ──
+// ── Success Gauge (Option B) ──
 function drawGauge(canvasId, score, labelId) {
   const canvas = document.getElementById(canvasId);
   if (!canvas) return;
@@ -294,32 +295,28 @@ function drawGauge(canvasId, score, labelId) {
   ctx.lineCap = 'round';
   ctx.stroke();
 
-  // CONVERT SUCCESS TO RISK
-  // 5% Success = 95% Risk (Right)
-  // 99% Success = 1% Risk (Left)
-  const riskValue = Math.min(100, Math.max(0, 100 - score));
-  const normalizedRisk = riskValue / 100;
-  const needleAngle = startAngle + (normalizedRisk * Math.PI);
+  // Position: 0% Success = Left (PI), 100% Success = Right (2*PI)
+  const normalizedScore = Math.min(100, Math.max(0, score)) / 100;
+  const needleAngle = startAngle + (normalizedScore * Math.PI);
   
-  // COLOR BY RISK
-  let riskColor = '#22c55e'; // Green for Low Risk
-  let riskStatus = 'Low Risk';
-  
-  if (riskValue > 65) {
-    riskColor = '#ef4444'; // Red for High Risk
-    riskStatus = 'High Risk';
-  } else if (riskValue > 30) {
-    riskColor = '#f59e0b'; // Amber for Medium Risk
+  // Colors based on Success
+  let riskColor = '#ef4444'; // Red for Poor Success (High Risk)
+  let riskStatus = 'High Risk';
+  if (score > 75) {
+    riskColor = '#22c55e'; // Green for High Success (Low Risk)
+    riskStatus = 'Low Risk';
+  } else if (score > 40) {
+    riskColor = '#f59e0b'; // Amber for Mid Success (Medium Risk)
     riskStatus = 'Medium Risk';
   }
 
-  // Draw the progress arc up to the needle
+  // Progress arc
   ctx.beginPath();
   ctx.arc(cx, cy, r, startAngle, needleAngle);
   ctx.strokeStyle = riskColor;
   ctx.stroke();
 
-  // Draw the needle
+  // Needle
   ctx.beginPath();
   ctx.moveTo(cx, cy);
   ctx.lineTo(cx + Math.cos(needleAngle) * (r - 10), cy + Math.sin(needleAngle) * (r - 10));
@@ -327,19 +324,18 @@ function drawGauge(canvasId, score, labelId) {
   ctx.lineWidth = 4;
   ctx.stroke();
 
-  // Center hub
+  // Hub
   ctx.beginPath();
   ctx.arc(cx, cy, 8, 0, 2 * Math.PI);
   ctx.fillStyle = '#1e40af';
   ctx.fill();
 
-  // Labels
+  // Labels (Matching Option B)
   ctx.font = '600 11px Inter, sans-serif';
   ctx.fillStyle = '#94a3b8';
-  ctx.textAlign = 'left'; ctx.fillText('Low Risk', cx - r - 2, cy - 4);
-  ctx.textAlign = 'right'; ctx.fillText('High Risk', cx + r + 2, cy - 4);
+  ctx.textAlign = 'left'; ctx.fillText('High Risk', cx - r - 2, cy - 4);
+  ctx.textAlign = 'right'; ctx.fillText('Low Risk', cx + r + 2, cy - 4);
 
-  // Update text label below
   if (labelId) {
     const lbl = document.getElementById(labelId);
     if (lbl) {
@@ -577,11 +573,12 @@ async function runAnalyzing(raw, btn) {
 
     rawLat = lat; rawLng = lon; // ✅ Save for feedback check
 
-    // 2. Predict
+    // 2. Predict (include selected bank for server override)
+    const selectedBank = document.getElementById('bank-select')?.value || null;
     const res = await fetch('/predict', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ lat, lon })
+      body: JSON.stringify({ lat, lon, bank_name: selectedBank || undefined })
     });
 
     if (res.status === 403) {
@@ -645,13 +642,15 @@ async function runAnalyzingWithCoords(name, lat, lng, btn, liveMetrics = null) {
   rawLat = lat; rawLng = lng; // ✅ Save for feedback
   animateSteps();
   try {
+    const selectedBank = document.getElementById('bank-select')?.value || null;
     const res = await fetch('/predict', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         lat,
         lon: lng,
-        live_metrics: liveMetrics
+        live_metrics: liveMetrics,
+        bank_name: selectedBank || undefined
       })
     });
     if (!res.ok) throw new Error(`Server Error: ${res.status}`);
@@ -731,8 +730,9 @@ function populateSignal(sig) {
   } else if (vBox) {
     vBox.classList.add('hidden');
   }
-  // Draw gauge on results (Extract numeric score from label)
-  const numericScore = parseFloat(sig.upi.split('-').pop().match(/\d+\.?\d*/) || 5);
+  // Draw gauge on results (Extract the percentage number specifically)
+  const matches = sig.upi.match(/\d+\.?\d*(?=%)/g) || sig.upi.match(/\d+\.?\d*/g);
+  const numericScore = matches ? parseFloat(matches[matches.length - 1]) : 5;
   setTimeout(() => drawGauge('results-risk-gauge', numericScore, 'results-risk-label'), 100);
 }
 

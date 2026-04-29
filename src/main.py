@@ -42,9 +42,9 @@ app.add_middleware(
 @app.on_event("startup")
 async def startup_event():
     """Start the background scraper when the API starts."""
-    print(f"🔥 SERVER STARTING FROM: {os.path.abspath(__file__)}")
-    print(f"📂 FRONTEND ABSOLUTE PATH: {os.path.abspath(FRONTEND_DIR)}")
-    clean_old_data() # 🔥 Run cleanup on startup
+    print(f"SERVER STARTING FROM: {os.path.abspath(__file__)}")
+    print(f"FRONTEND ABSOLUTE PATH: {os.path.abspath(FRONTEND_DIR)}")
+    clean_old_data() # Run cleanup on startup
     
     # Start the background tasks
     scheduler = BackgroundScheduler(daemon=True)
@@ -288,14 +288,16 @@ async def predict(req: PredictionRequest):
             if status == "DOWN":
                 ui_data["tier"] = "poor"
                 ui_data["badge"] = "CRITICAL RISK"
-                ui_data["upi"] = "Near 0% - Server Down"
+                ui_data["upi"] = "Server Down - 5.0%"
                 ui_data["rec"] = f"STOP: {req.bank_name} servers are currently DOWN. Use Cash."
                 bank_warning = f"{req.bank_name} servers are offline."
             elif status == "FLUCTUATING":
-                ui_data["tier"] = "mid"
-                ui_data["badge"] = "Medium Risk (Bank Fluctuating)"
-                ui_data["upi"] = "Mid Success - 45-60%"
-                ui_data["rec"] = f"Warning: {req.bank_name} servers are unstable. Proceed with caution."
+                # Only downgrade if it was previously "good"
+                if ui_data["tier"] == "good":
+                    ui_data["tier"] = "mid"
+                    ui_data["badge"] = "Medium Risk (Bank Fluctuating)"
+                    ui_data["upi"] = f"Bank Fluctuating - 50.0%"
+                    ui_data["rec"] = f"Warning: {req.bank_name} servers are unstable. Proceed with caution."
                 bank_warning = f"{req.bank_name} servers are fluctuating."
 
         return {

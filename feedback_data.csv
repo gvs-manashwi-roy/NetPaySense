@@ -26,3 +26,6 @@ lat,lon,outcome,metrics,timestamp
 13.3286652,75.7565905,success,"{'download': '252.26 Mbps', 'upload': '81.30 Mbps', 'latency': '39.0 ms', 'is_verified': True, 'operator': 'Jio'}",2026-04-28T11:52:53.152358
 13.327749636115456,75.75588426556413,failed,"{'download': '29.65 Mbps', 'upload': '30.91 Mbps', 'latency': '40.1 ms', 'is_verified': True, 'operator': 'Jio'}",2026-04-28T13:28:26.480991
 13.327762507700577,75.7559418563076,success,"{'download': '24.68 Mbps', 'upload': '29.05 Mbps', 'latency': '54.8 ms', 'is_verified': True, 'operator': 'Jio'}",2026-04-28T14:24:45.621301
+13.32733,75.755526,success,"{'download': '28.93 Mbps', 'upload': '28.83 Mbps', 'latency': '143.2 ms', 'is_verified': True, 'operator': 'Jio'}",2026-04-28T20:59:48.477220
+13.327838916336914,75.7560881848502,failed,"{'download': '10.21 Mbps', 'upload': '15.89 Mbps', 'latency': '46.2 ms', 'is_verified': True, 'operator': 'Jio'}",2026-04-28T21:07:04.000700
+13.327838916336914,75.7560881848502,success,"{'download': '27.16 Mbps', 'upload': '20.01 Mbps', 'latency': '59.7 ms', 'is_verified': True, 'operator': 'Jio'}",2026-04-28T21:11:51.312958
