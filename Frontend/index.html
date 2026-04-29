@@ -633,7 +633,17 @@ window.addEventListener("DOMContentLoaded", () => {
     el.dataset.en = el.innerText;
   });
 });
+window.changeLang = function(lang) {
 
+  document.querySelectorAll("[data-i18n]").forEach(el => {
+    el.innerText = el.dataset.original;
+  });
+
+  if (lang === "kn") window.applyKannadaTranslation();
+  if (lang === "hi") window.applyHindiTranslation();
+  if (lang === "ta") window.applyTamilTranslation();
+  if (lang === "te") window.applyTeluguTranslation();
+};
 // your existing function
 function changeLang(lang) {
   ...
