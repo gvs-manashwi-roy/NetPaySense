@@ -655,7 +655,13 @@ async function runAnalyzingWithCoords(name, lat, lng, btn, liveMetrics = null) {
     });
     if (!res.ok) throw new Error(`Server Error: ${res.status}`);
     const data = await res.json();
-
+    //store prediction globally for map usage
+    currentLat = lat;
+    currentLng = lng;
+    window.lastPredictionData=data;
+    setTimeout(() => {
+      updateMapWithPrediction(data);
+     }, 500);
     currentSig = {
       tier: data.tier,
       label: data.label,
@@ -1061,15 +1067,25 @@ function initMap() {
       map = L.map('real-map').setView([currentLat, currentLng], 16);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(map);
       mapMarker = L.marker([currentLat, currentLng]).addTo(map).bindPopup('<b>You are here</b>', { closeOnClick: false, autoClose: false }).openPopup();
-      betterNetworkCircle = L.circle([currentLat + 0.001, currentLng + 0.0015], { color: '#22c55e', fillColor: '#22c55e', fillOpacity: 0.2, radius: 100 }).addTo(map).bindPopup('Better Network Zone');
+      // betterNetworkCircle = L.circle([currentLat + 0.001, currentLng + 0.0015], { color: '#22c55e', fillColor: '#22c55e', fillOpacity: 0.2, radius: 100 }).addTo(map).bindPopup('Better Network Zone');
     } else {
       map.invalidateSize();
       map.flyTo([currentLat, currentLng], 16, { duration: 1 });
       mapMarker.setLatLng([currentLat, currentLng]).openPopup();
-      betterNetworkCircle.setLatLng([currentLat + 0.001, currentLng + 0.0015]);
+      // betterNetworkCircle.setLatLng([currentLat + 0.001, currentLng + 0.0015]);
     }
   };
   render();
+
+  // 🔄 Ensures smart map is rendered AFTER the map is initialized.
+// The backend response (better_location) is stored globally,
+// but the map might not be ready at that moment.
+// So once the map loads, we check if data already exists
+// and then apply the smart map visualization (circle, zoom, etc.)
+if (window.lastPredictionData) {
+  updateMapWithPrediction(window.lastPredictionData);
+}
+
   if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(pos => {
       currentLat = pos.coords.latitude; currentLng = pos.coords.longitude;
@@ -1077,6 +1093,91 @@ function initMap() {
     }, err => { }, { enableHighAccuracy: true, timeout: 5000 });
   }
 }
+//  Calculates the real-world distance (in meters) between two geographic points
+// using the Haversine formula. This is required to determine how far the user is
+// from the "better network location", which is then used for:
+// - deciding circle color (green/yellow/red)
+// - generating movement recommendation (near / move X meters)
+
+function getDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371000;
+  const toRad = x => x * Math.PI / 180;
+
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) *
+    Math.cos(toRad(lat2)) *
+    Math.sin(dLon / 2) ** 2;
+
+  return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+}
+//smart map feature frontend dynamic design and implementation to show better network location based on backend prediction
+function updateMapWithPrediction(data) {
+
+  // 🛑 Safety check:
+  // Ensure map is initialized AND backend response contains better_location
+  // Prevents runtime errors if API or map is not ready
+  if (!map || !data || !data.better_location) return;
+
+  // 📍 Extract optimized (better) location from backend response
+  const betterLat = data.better_location.lat;
+  const betterLng = data.better_location.lon;
+
+  // 🔍 Debug log to verify coordinates received from backend
+  console.log("SMART MAP:", betterLat, betterLng);
+
+  // 🔄 Remove previous circle (if exists)
+  // Ensures only one "better location" circle is shown at a time
+  if (betterNetworkCircle) {
+    map.removeLayer(betterNetworkCircle);
+  }
+
+  // 📏 Calculate real-world distance between user location and better location
+  // Used to decide color (proximity-based visualization)
+  const dist = getDistance(currentLat, currentLng, betterLat, betterLng);
+
+  // 🎨 Color logic based on distance:
+  // Green   → very close (good network already nearby)
+  // Yellow  → moderately far
+  // Red     → far (user should move)
+  let color = '#22c55e'; // default green
+  if (dist > 300) color = '#ef4444';       // red → far
+  else if (dist > 100) color = '#f59e0b';  // yellow → medium
+
+  // 🟢 Draw circle on map at better location
+  // This visually represents the optimal network zone
+  betterNetworkCircle = L.circle([betterLat, betterLng], {
+    color,              // border color
+    fillColor: color,   // fill color
+    fillOpacity: 0.4,   // transparency
+    radius: 250         // radius in meters (visual zone)
+  })
+  .addTo(map)
+  .bindPopup("Better Network Zone"); // popup label
+
+  // 🗺️ Adjust map view to include BOTH:
+  // - current user location
+  // - better network location
+  // This ensures user can visually understand where to move
+  map.fitBounds([
+    [currentLat, currentLng],
+    [betterLat, betterLng]
+  ], { padding: [50, 50] }); // padding for better UI spacing
+  // 🧠 Update UI distance text dynamically
+const distText = document.getElementById("smart-distance");
+
+if (distText) {
+  if (dist < 20) {
+    distText.textContent = "You are already in best network zone";
+  } else {
+    distText.textContent = `Move ${Math.round(dist)}m`;
+  }
+}
+}
+
 
 // ── Init ──
 initTheme();

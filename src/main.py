@@ -21,7 +21,7 @@ from pathlib import Path
 from apscheduler.schedulers.background import BackgroundScheduler
 
 # Import bank monitoring logic from sibling module
-from .bank_monitor import fetch_bank_health, get_bank_upi_status, get_problematic_banks, clean_old_data, CSV_FILE
+from bank_monitor import fetch_bank_health, get_bank_upi_status, get_problematic_banks, clean_old_data, CSV_FILE
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 MODEL_PATH = BASE_DIR / "models"
@@ -196,7 +196,37 @@ async def predict(req: PredictionRequest):
         # First, check the single nearest neighbor to see if we are in a known "Dead Zone"
         dist, idx = tree.query([req.lat, req.lon])
         nearest = look_up_df.iloc[idx]
-        
+        # ----------- SMART MAP ADDITION (NON-DESTRUCTIVE) -----------
+
+        try:
+            distances, indices = tree.query([req.lat, req.lon], k=10)
+
+            best_score = float('-inf')
+            best_data = nearest  # fallback
+
+            for i in indices:
+                row = look_up_df.iloc[i]
+
+                # scoring logic
+                score = row['download_mbps'] - row['latency_ms']
+
+                if score > best_score:
+                    best_score = score
+                    best_data = row
+
+            # extract best location
+            if best_data is not None:
+                better_lat = float(best_data['lat'])
+                better_lon = float(best_data['lon'])
+            else:
+                better_lat = float(nearest['lat'])
+                better_lon = float(nearest['lon'])
+
+        except Exception as e:
+            print("Smart map error:", e)
+            better_lat = float(nearest['lat'])
+            better_lon = float(nearest['lon'])
+
         dn = nearest['download_mbps']
         up = nearest['upload_mbps']
         lat = nearest['latency_ms']
@@ -302,6 +332,7 @@ async def predict(req: PredictionRequest):
 
         return {
             "lat": authentic_lat, "lon": authentic_lon, "tier": ui_data["tier"],
+            "better_location": {"lat": better_lat, "lon": better_lon}, #return betterlocation for map pin in frontend
             "bars": ui_data["bars"], "dbm": ui_data["dbm"], "label": ui_data["label"],
             "upi": ui_data["upi"], "badge": ui_data["badge"], "type": ui_data["type"],
             "recommendation": ui_data["rec"], "confidence": f"{(final_quality + 1) * 30}%", 
