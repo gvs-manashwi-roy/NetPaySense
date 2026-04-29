@@ -21,7 +21,7 @@ from pathlib import Path
 from apscheduler.schedulers.background import BackgroundScheduler
 
 # Import bank monitoring logic from sibling module
-from bank_monitor import fetch_bank_health, get_bank_upi_status, get_problematic_banks, clean_old_data, CSV_FILE
+from .bank_monitor import fetch_bank_health, get_bank_upi_status, get_problematic_banks, clean_old_data, CSV_FILE
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 MODEL_PATH = BASE_DIR / "models"
@@ -193,9 +193,13 @@ async def predict(req: PredictionRequest):
 
     try:
         # 1. Hybrid Spatial Lookup
-        # First, check the single nearest neighbor to see if we are in a known "Dead Zone"
         dist, idx = tree.query([req.lat, req.lon])
         nearest = look_up_df.iloc[idx]
+        
+        # Initialize better_location fallbacks
+        better_lat = float(nearest['lat'])
+        better_lon = float(nearest['lon'])
+
         # ----------- SMART MAP ADDITION (NON-DESTRUCTIVE) -----------
 
         try:

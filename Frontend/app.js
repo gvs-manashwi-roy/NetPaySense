@@ -450,6 +450,7 @@ const BANK_DATA = {
 };
 
 let currentSig = null;
+let currentLat = 12.9716;
 let currentLng = 77.5946;
 let rawLat = 0, rawLng = 0; // 🔥 Store actual GPS coords for feedback
 let isLiveSession = false; // 🔥 Track if current check is GPS-verified
@@ -588,6 +589,15 @@ async function runAnalyzing(raw, btn) {
 
     if (!res.ok) throw new Error(`Server Error: ${res.status}`);
     const data = await res.json();
+
+    // 🗺️ SMART MAP: Store prediction globally and update map
+    currentLat = lat;
+    currentLng = lon;
+    window.lastPredictionData = data;
+    setTimeout(() => {
+      updateMapWithPrediction(data);
+    }, 500);
+
     lastNetworkScore = parseFloat(data.upi.split('-').pop().match(/\d+\.?\d*/) || 90);
     currentSig = {
       tier: data.tier,
@@ -1116,67 +1126,41 @@ function getDistance(lat1, lon1, lat2, lon2) {
 }
 //smart map feature frontend dynamic design and implementation to show better network location based on backend prediction
 function updateMapWithPrediction(data) {
+  if (!map || !data) return;
 
-  // 🛑 Safety check:
-  // Ensure map is initialized AND backend response contains better_location
-  // Prevents runtime errors if API or map is not ready
-  if (!map || !data || !data.better_location) return;
+  // 🔄 Force map to recalculate its container size (fixes grey map issue)
+  setTimeout(() => map.invalidateSize(), 100);
 
-  // 📍 Extract optimized (better) location from backend response
-  const betterLat = data.better_location.lat;
-  const betterLng = data.better_location.lon;
+  // 📍 Extract optimized (better) location or fallback to current
+  const betterLat = data.better_location?.lat || currentLat;
+  const betterLng = data.better_location?.lon || currentLng;
 
-  // 🔍 Debug log to verify coordinates received from backend
-  console.log("SMART MAP:", betterLat, betterLng);
+  console.log("SMART MAP UPDATE:", betterLat, betterLng);
 
-  // 🔄 Remove previous circle (if exists)
-  // Ensures only one "better location" circle is shown at a time
-  if (betterNetworkCircle) {
-    map.removeLayer(betterNetworkCircle);
-  }
+  if (betterNetworkCircle) map.removeLayer(betterNetworkCircle);
 
-  // 📏 Calculate real-world distance between user location and better location
-  // Used to decide color (proximity-based visualization)
   const dist = getDistance(currentLat, currentLng, betterLat, betterLng);
+  let color = '#22c55e';
+  if (dist > 300) color = '#ef4444';
+  else if (dist > 100) color = '#f59e0b';
 
-  // 🎨 Color logic based on distance:
-  // Green   → very close (good network already nearby)
-  // Yellow  → moderately far
-  // Red     → far (user should move)
-  let color = '#22c55e'; // default green
-  if (dist > 300) color = '#ef4444';       // red → far
-  else if (dist > 100) color = '#f59e0b';  // yellow → medium
-
-  // 🟢 Draw circle on map at better location
-  // This visually represents the optimal network zone
   betterNetworkCircle = L.circle([betterLat, betterLng], {
-    color,              // border color
-    fillColor: color,   // fill color
-    fillOpacity: 0.4,   // transparency
-    radius: 250         // radius in meters (visual zone)
-  })
-  .addTo(map)
-  .bindPopup("Better Network Zone"); // popup label
+    color: color,
+    fillColor: color,
+    fillOpacity: 0.2,
+    radius: 100
+  }).addTo(map).bindPopup(`<b>Optimized Location</b><br>${Math.round(dist)}m from you`);
 
-  // 🗺️ Adjust map view to include BOTH:
-  // - current user location
-  // - better network location
-  // This ensures user can visually understand where to move
-  map.fitBounds([
-    [currentLat, currentLng],
-    [betterLat, betterLng]
-  ], { padding: [50, 50] }); // padding for better UI spacing
-  // 🧠 Update UI distance text dynamically
-const distText = document.getElementById("smart-distance");
-
-if (distText) {
-  if (dist < 20) {
-    distText.textContent = "You are already in best network zone";
-  } else {
-    distText.textContent = `Move ${Math.round(dist)}m`;
+  const distText = document.getElementById('smart-distance');
+  if (distText) {
+    if (dist < 20) {
+      distText.textContent = "You're in the Best Spot!";
+    } else {
+      distText.textContent = `Move ${Math.round(dist)}m`;
+    }
   }
 }
-}
+
 
 
 // ── Init ──
