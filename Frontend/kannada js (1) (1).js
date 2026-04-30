@@ -57,7 +57,7 @@ const KANNADA_TRANSLATIONS = {
     // Dashboard
     "📊 My Network Dashboard": "📊 ನನ್ನ ನೆಟ್‌ವರ್ಕ್ ಡ್ಯಾಶ್‌ಬೋರ್ಡ್",
     "Check your current location's network reliability": "ನಿಮ್ಮ ಪ್ರಸ್ತುತ ಸ್ಥಳದ ನೆಟ್‌ವರ್ಕ್ ವಿಶ್ವಾಸಾರ್ಹತೆಯನ್ನು ಪರಿಶೀಲಿಸಿ",
-    "📍 Get My Location": "📍 ನನ್ನ ಸ್ಥಳವನ್ನು ಪಡೆಯಿರಿ",
+    "📍 Fetch My Location": "📍 ನನ್ನ ಸ್ಥಳವನ್ನು ಪಡೆಯಿರಿ",
     "⏳ Fetching...": "⏳ ಪಡೆಯಲಾಗುತ್ತಿದೆ...",
     "🔍 Check New Location": "🔍 ಹೊಸ ಸ್ಥಳವನ್ನು ಪರಿಶೀಲಿಸಿ",
     "Fetching location...": "ಸ್ಥಳವನ್ನು ಪಡೆಯಲಾಗುತ್ತಿದೆ...",
