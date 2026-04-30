@@ -23,6 +23,23 @@
   --divider: #f1f5f9;
 }
 
+.lang-btn {
+  background: linear-gradient(135deg,#0ea5e9,#2563eb);
+  color: white;
+  border: none;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+  appearance: none;
+}
+
+.lang-btn option {
+  background: white;
+  color: black;
+}
+
 [data-theme="dark"] {
   --bg: linear-gradient(170deg, #0f172a 0%, #1e293b 60%, #0f172a 100%);
   --shell-bg: #1e293b;
