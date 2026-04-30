@@ -595,6 +595,15 @@ async function runAnalyzing(raw, btn) {
 
     if (!res.ok) throw new Error(`Server Error: ${res.status}`);
     const data = await res.json();
+    
+    // 🗺️ SMART MAP: Store prediction globally and update map
+    currentLat = lat;
+    currentLng = lon;
+    window.lastPredictionData = data;
+    setTimeout(() => {
+      if (typeof updateMapWithPrediction === 'function') updateMapWithPrediction(data);
+    }, 500);
+
     lastNetworkScore = parseFloat(data.upi.split('-').pop().match(/\d+\.?\d*/) || 90);
     currentSig = {
       tier: data.tier,
@@ -1102,6 +1111,71 @@ function switchDashboardTab(tabId, el) {
 // ── Map ──
 let map = null, mapMarker = null, betterNetworkCircle = null;
 
+// 🔥 Fix for Leaflet default icon paths being blocked by browser tracking prevention
+if (typeof L !== 'undefined' && L.Icon && L.Icon.Default) {
+  delete L.Icon.Default.prototype._getIconUrl;
+  L.Icon.Default.mergeOptions({
+    iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
+    iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+  });
+}
+
+//  Calculates the real-world distance (in meters) between two geographic points
+// using the Haversine formula. This is required to determine how far the user is
+// from the "better network location", which is then used for:
+// - deciding circle color (green/yellow/red)
+// - generating movement recommendation (near / move X meters)
+function getDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371000;
+  const toRad = x => x * Math.PI / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) *
+    Math.cos(toRad(lat2)) *
+    Math.sin(dLon / 2) ** 2;
+  return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+}
+
+// Smart map feature frontend dynamic design and implementation to show better network location based on backend prediction
+function updateMapWithPrediction(data) {
+  if (!map || !data) return;
+
+  // 🔄 Force map to recalculate its container size (fixes grey map issue)
+  setTimeout(() => map.invalidateSize(), 100);
+
+  // 📍 Extract optimized (better) location or fallback to current
+  const betterLat = data.better_location?.lat || currentLat;
+  const betterLng = data.better_location?.lon || currentLng;
+
+  console.log("SMART MAP UPDATE:", betterLat, betterLng);
+
+  if (betterNetworkCircle) map.removeLayer(betterNetworkCircle);
+
+  const dist = getDistance(currentLat, currentLng, betterLat, betterLng);
+  let color = '#22c55e'; // Green
+  if (dist > 300) color = '#ef4444'; // Red
+  else if (dist > 100) color = '#f59e0b'; // Amber
+
+  betterNetworkCircle = L.circle([betterLat, betterLng], {
+    color: color,
+    fillColor: color,
+    fillOpacity: 0.2,
+    radius: 100
+  }).addTo(map).bindPopup(`<b>Optimized Location</b><br>${Math.round(dist)}m from you`);
+
+  const distText = document.getElementById('smart-distance');
+  if (distText) {
+    if (dist < 20) {
+      distText.textContent = "You're in the Best Spot!";
+    } else {
+      distText.textContent = `Move ${Math.round(dist)}m`;
+    }
+  }
+}
+
 function initMap() {
   const render = () => {
     if (!map) {
@@ -1118,10 +1192,13 @@ function initMap() {
     if (window.lastPredictionData) updateMapWithPrediction(window.lastPredictionData);
   };
   render();
-  if (navigator.geolocation) {
+  if (navigator.geolocation && (isLiveSession || !window.lastPredictionData)) {
     navigator.geolocation.getCurrentPosition(pos => {
-      currentLat = pos.coords.latitude; currentLng = pos.coords.longitude;
-      render();
+      // Only override the view if we are in a live session or no search exists
+      if (isLiveSession || !window.lastPredictionData) {
+        currentLat = pos.coords.latitude; currentLng = pos.coords.longitude;
+        render();
+      }
     }, err => { }, { enableHighAccuracy: true, timeout: 5000 });
   }
 }

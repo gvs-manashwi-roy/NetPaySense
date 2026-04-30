@@ -9,10 +9,8 @@
   <title>NetPaySense</title>
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="style.css?v=4.1" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 </head>
 
@@ -381,7 +379,7 @@
             <div id="real-map" style="width: 100%; height: 100%; z-index: 1;"></div>
             <div
               style="position:absolute; bottom:20px; left:20px; background:white; padding:12px; border-radius:16px; width:calc(100% - 40px); box-shadow:0 4px 12px rgba(0,0,0,0.1); z-index: 1000;">
-              <span style="font-size:1.2rem;">🚶</span> <b>Move 50m</b> ➔ Better network
+              <span style="font-size:1.2rem;">🚶</span> <b id="smart-distance">Calculating...</b> ➔ Better network
             </div>
           </div>
         </div>

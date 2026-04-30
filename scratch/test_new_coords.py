@@ -11,7 +11,7 @@ from src.main import predict, PredictionRequest
 async def run_test():
     try:
         # TEST COORDINATES (HIREKOLALE LAKE, CHIKMAGALUR)
-        lat, lon = 13.422797960938473, 75.60326883537789
+        lat, lon = 13.4137, 75.7700
         req = PredictionRequest(lat=lat, lon=lon)
         result = await predict(req)
         
