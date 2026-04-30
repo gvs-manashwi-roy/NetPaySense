@@ -2,6 +2,7 @@ from dotenv import load_dotenv
 load_dotenv()  # Must be first — loads SUPABASE_URL and SUPABASE_KEY from .env
 
 from fastapi import FastAPI, HTTPException, Request
+import tower
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -34,6 +35,7 @@ MODEL_PATH = BASE_DIR / "models"
 DATA_PATH = BASE_DIR / "data"
 FRONTEND_DIR = BASE_DIR / "Frontend"
 
+OPENCELL_API_KEY = os.getenv("OPENCELL_API_KEY")
 
 app = FastAPI(title="NetPaySense API")
 
@@ -70,25 +72,6 @@ karnataka = gdf[gdf["STATE"] == "KARNATAKA"]
 def isInKarnataka(lat: float, lon: float) -> bool:
     point = Point(lon, lat)
     return karnataka.geometry.contains(point).any()
-
-# ----------- OPERATOR PERFORMANCE -----------
-def get_operator_performance(lat, lon):
-    # Simulated operator data - in real app would use SignalStrength API or crowdsourced data
-    return {
-        "Jio": {"signal": -70, "latency": 80},
-        "Airtel": {"signal": -85, "latency": 120},
-        "Vi": {"signal": -95, "latency": 200}
-    }
-
-def suggest_best_operator(operators):
-    best = None
-    best_score = -999
-    for op, values in operators.items():
-        score = values["signal"] - values["latency"]
-        if score > best_score:
-            best_score = score
-            best = op
-    return best
 
 # ----------- ML MODELS -----------
 class OoklaNN(nn.Module):
@@ -334,8 +317,10 @@ async def predict(req: PredictionRequest):
         has_alert = check_nearby_failures(req.lat, req.lon)
         
         ui_data = get_ui_data(final_quality, upi_score, has_alert)
-        operators = get_operator_performance(req.lat, req.lon)
-        best_operator = suggest_best_operator(operators)
+
+        # ----------- REAL SIM OPERATOR DETECTION -----------
+        nearest_tower_data = tower.find_nearest_tower(req.lat, req.lon, OPENCELL_API_KEY)
+        best_operator = nearest_tower_data.get("operator", "Unknown")
 
         # 3. Bank Status Override (Official Scraper Data)
         bank_warning = None

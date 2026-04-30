@@ -17,3 +17,4 @@ pydantic
 supabase
 python-dotenv
 speedtest-cli
+requests
