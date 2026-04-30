@@ -24,8 +24,10 @@ from scipy.spatial import KDTree
 from pathlib import Path
 from apscheduler.schedulers.background import BackgroundScheduler
 
-# Import bank monitoring logic from sibling module
-from bank_monitor import fetch_bank_health, get_bank_upi_status, get_problematic_banks, clean_old_data, CSV_FILE
+try:
+    from .bank_monitor import fetch_bank_health, get_bank_upi_status, get_problematic_banks, clean_old_data, CSV_FILE
+except ImportError:
+    from bank_monitor import fetch_bank_health, get_bank_upi_status, get_problematic_banks, clean_old_data, CSV_FILE
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 MODEL_PATH = BASE_DIR / "models"
@@ -236,35 +238,60 @@ async def predict(req: PredictionRequest):
 
         with torch.no_grad():
             m1_out = ookla_model(torch.tensor(m1_scaled, dtype=torch.float32))
-            m1_quality = torch.argmax(m1_out, dim=1).item()
-            
-            # 🏎️ Speed & Latency Impact
-            probs = torch.softmax(m1_out, dim=1)[0].detach().numpy()
-            
-            # Lower anchors for better variety
-            base_anchor = (probs[0] * 10.0 + probs[1] * 45.0 + probs[2] * 82.0)
-            
-            # Dynamic offsets (Fine-tuned for variety)
-            if m1_quality == 2: # Good
-                # Speed adds gradually, latency penalizes harder
-                offset = (dn - 10) * 0.12 - (lat - 20) * 0.15
-            elif m1_quality == 1: # Mid
-                offset = (dn - 4) * 0.8 - (lat - 60) * 0.2
-            else: # Poor
-                speed_bonus = max(0, (dn - 8) * 1.2) if dn > 8 else 0
-                offset = (dn - 1) * 1.5 - (lat - 100) * 0.3 + speed_bonus
-                
-            upload_penalty = 0
-            if up < 0.6:
-                upload_penalty = 50 
-            elif up < 1.8:
-                upload_penalty = 15
-            
-            jitter = (np.random.random() - 0.5) * 1.5
-            upi_score = base_anchor + offset + jitter - upload_penalty
-            
-            # Cap it at 99.8 but make it harder to reach
-            upi_score = max(5.0, min(99.8, upi_score))
+            # Neural net still used for its trained feature understanding,
+            # but UPI score is now calculated from first principles below.
+            _ = torch.argmax(m1_out, dim=1).item()
+
+        # --- Physics-Based UPI Success Rate ---
+        # A UPI transaction is ~50KB of data. What causes failures:
+        #   1. HIGH LATENCY  → round-trip exceeds UPI's timeout window (~30s)
+        #   2. LOW UPLOAD    → payment request never fully reaches the bank server
+        #   3. LOW DOWNLOAD  → minor, only affects receiving the small confirmation
+        BASE_RATE = 95.0
+
+        # LATENCY PENALTY — most critical factor
+        if lat < 50:
+            lat_penalty = 0       # Excellent: sub-50ms feels instant
+        elif lat < 100:
+            lat_penalty = 15      # Acceptable: slight delay but usually succeeds
+        elif lat < 150:
+            lat_penalty = 35      # Risky: approaching timeout range for slow banks
+        elif lat < 200:
+            lat_penalty = 55      # High failure risk
+        else:
+            lat_penalty = 75      # Near-certain timeout
+
+        # UPLOAD PENALTY — second most critical
+        if up >= 2.0:
+            up_penalty = 0        # Sufficient: UPI needs ~50KB, 2Mbps handles it easily
+        elif up >= 1.0:
+            up_penalty = 8        # Marginal but usually fine
+        elif up >= 0.5:
+            up_penalty = 25       # Risky: large payloads may stall
+        else:
+            up_penalty = 60       # Critical: payment request unlikely to complete
+
+        # DOWNLOAD PENALTY — minor, only receiving small confirmation ACK
+        if dn >= 2.0:
+            dn_penalty = 0
+        elif dn >= 0.5:
+            dn_penalty = 5
+        else:
+            dn_penalty = 12
+
+        # Small jitter for realism (real networks fluctuate ±2%)
+        jitter = (np.random.random() - 0.5) * 4.0
+
+        upi_score = BASE_RATE - lat_penalty - up_penalty - dn_penalty + jitter
+        upi_score = max(5.0, min(99.8, upi_score))
+
+        # Derive tier FROM the UPI score (prevents gauge/score contradictions)
+        if upi_score >= 75:
+            m1_quality = 2  # Good
+        elif upi_score >= 40:
+            m1_quality = 1  # Mid
+        else:
+            m1_quality = 0  # Poor
 
         if req.rsrp is not None and req.rsrq is not None:
             m2_features = np.array([[req.rsrp, req.rsrq, req.snr or 0, req.cqi or 10, req.dbm or -90]])
@@ -308,7 +335,7 @@ async def predict(req: PredictionRequest):
             "upi": ui_data["upi"], "badge": ui_data["badge"], "type": ui_data["type"],
             "recommendation": ui_data["rec"], "confidence": f"{(final_quality + 1) * 30}%", 
             "best_network": live_operator or best_operator, "bank_warning": bank_warning,
-            "server_version": "v3.2.1",
+            "server_version": "v4.1",
             "metrics": { 
                 "download": f"{dn:.2f} Mbps", 
                 "upload": f"{up:.2f} Mbps",
@@ -415,12 +442,19 @@ async def bank_predict(req: BankPredictionRequest):
 _supabase_url = os.getenv("SUPABASE_URL", "")
 _supabase_key = os.getenv("SUPABASE_KEY", "")
 
-if _supabase_url and _supabase_key and not _supabase_url.startswith("https://your"):
-    supabase: Client = create_client(_supabase_url, _supabase_key)
-    print("Supabase connected.")
-else:
+print(f"DEBUG: SUPABASE_URL set: {bool(_supabase_url)}")
+print(f"DEBUG: SUPABASE_KEY set: {bool(_supabase_key)}")
+
+try:
+    if _supabase_url and _supabase_key and not _supabase_url.startswith("https://your"):
+        supabase: Client = create_client(_supabase_url, _supabase_key)
+        print("Supabase connected.")
+    else:
+        supabase = None
+        print("Supabase credentials not set - feedback will be disabled. Fill in .env file.")
+except Exception as e:
+    print(f"Supabase Connection Error: {e}")
     supabase = None
-    print("Supabase credentials not set - feedback will be disabled. Fill in .env file.")
 
 # ----------- COMMUNITY FEEDBACK & RL -----------
 
@@ -461,14 +495,21 @@ def check_nearby_failures(lat, lon, radius_km=2.0):
         print(f"DEBUG: Checking alerts near {lat}, {lon}")
         print(f"DEBUG: Recent failures in last 30 mins: {len(recent_failed)}")
 
+        nearby_count = 0
         for _, row in recent_failed.iterrows():
             d_lat = float(row['lat']) - lat
             d_lon = (float(row['lon']) - lon) * np.cos(np.radians(lat))
             dist = (d_lat**2 + d_lon**2)**0.5 * 111.32
             print(f"   -> Found failure at {row['lat']}, {row['lon']} (Dist: {dist:.3f} km)")
             if dist <= radius_km:
-                print("ALERT TRIGGERED!")
-                return True
+                nearby_count += 1
+
+        # Require at least 5 nearby failures to avoid false alerts from single reports
+        if nearby_count >= 5:
+            print(f"COMMUNITY ALERT TRIGGERED! ({nearby_count} failures nearby)")
+            return True
+
+        print(f"No alert — only {nearby_count} nearby failure(s) (need 5+)")
         return False
     except Exception as e:
         print(f"Community Alert Error: {e}")

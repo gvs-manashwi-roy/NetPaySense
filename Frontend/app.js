@@ -305,10 +305,10 @@ function drawGauge(canvasId, score, labelId) {
   let riskColor = '#22c55e'; // Green for Low Risk
   let riskStatus = 'Low Risk';
   
-  if (riskValue > 65) {
+  if (riskValue > 45) {
     riskColor = '#ef4444'; // Red for High Risk
     riskStatus = 'High Risk';
-  } else if (riskValue > 30) {
+  } else if (riskValue > 15) {
     riskColor = '#f59e0b'; // Amber for Medium Risk
     riskStatus = 'Medium Risk';
   }
@@ -454,6 +454,7 @@ const BANK_DATA = {
 };
 
 let currentSig = null;
+let currentLat = 12.9716; // Bug 5 fix: initialize alongside currentLng
 let currentLng = 77.5946;
 let rawLat = 0, rawLng = 0; // 🔥 Store actual GPS coords for feedback
 let isLiveSession = false; // 🔥 Track if current check is GPS-verified
@@ -467,6 +468,7 @@ function hash(str) {
 
 // ── Location & Check ──
 function goToLocationChecker() {
+  isLiveSession = false; // Reset session type when manually checking new location
   // Hide bank dropdown when switching to checker
   document.getElementById('dash-bank-dropdown')?.classList.add('hidden');
 
@@ -542,6 +544,7 @@ function runCheck() {
   btn.textContent = 'Checking…';
   btn.disabled = true;
   document.getElementById('empty-state').classList.add('hidden');
+  resetFeedbackUI(); // 🔥 Reset feedback state for new test
   goStep(2);
   runAnalyzing(raw, btn);
 }
@@ -550,6 +553,7 @@ function runCheckWithCoords(name, lat, lng, liveMetrics = null) {
   const btn = document.getElementById('check-btn');
   btn.textContent = 'Checking…';
   btn.disabled = true;
+  resetFeedbackUI(); // 🔥 Reset feedback state for new test
   goStep(2);
   runAnalyzingWithCoords(name, lat, lng, btn, liveMetrics);
 }
@@ -600,7 +604,7 @@ async function runAnalyzing(raw, btn) {
       dbm: data.dbm,
       type: data.type,
       metrics: data.metrics,
-      serverVersion: data.server_version || "v3.2.1"
+      serverVersion: "v4.1"
     };
     currentLat = data.lat;
     currentLng = data.lon;
@@ -645,17 +649,34 @@ async function runAnalyzingWithCoords(name, lat, lng, btn, liveMetrics = null) {
   rawLat = lat; rawLng = lng; // ✅ Save for feedback
   animateSteps();
   try {
+    // Bug 1 fix: include selected bank so overrides fire on GPS checks
+    const selectedBank = document.getElementById('bank-select')?.value || null;
+
     const res = await fetch('/predict', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         lat,
         lon: lng,
-        live_metrics: liveMetrics
+        live_metrics: liveMetrics,
+        bank_name: selectedBank || undefined
       })
     });
+
+    // Bug 4 fix: handle 403 (outside Karnataka) with a clear message
+    if (res.status === 403) {
+      const errData = await res.json();
+      throw new Error(errData.message || 'Location outside of Karnataka');
+    }
+
     if (!res.ok) throw new Error(`Server Error: ${res.status}`);
     const data = await res.json();
+
+    // Bug 2 fix: update smart map with prediction data
+    currentLat = lat;
+    currentLng = lng;
+    window.lastPredictionData = data;
+    setTimeout(() => { updateMapWithPrediction(data); }, 500);
 
     currentSig = {
       tier: data.tier,
@@ -665,7 +686,7 @@ async function runAnalyzingWithCoords(name, lat, lng, btn, liveMetrics = null) {
       dbm: data.dbm,
       type: data.type,
       metrics: data.metrics,
-      serverVersion: data.server_version || "Old Server"
+      serverVersion: data.server_version || "v4.1"
     };
 
     setTimeout(() => {
@@ -685,7 +706,6 @@ async function runAnalyzingWithCoords(name, lat, lng, btn, liveMetrics = null) {
         saveRecent(name, { lat, lng }, currentSig);
         btn.textContent = 'Check'; btn.disabled = false;
 
-        // 🔥 Show/Hide Feedback button based on Live status
         const fbBtn = document.getElementById('results-feedback-btn');
         if (fbBtn) fbBtn.style.display = isLiveSession ? 'block' : 'none';
 
@@ -697,7 +717,8 @@ async function runAnalyzingWithCoords(name, lat, lng, btn, liveMetrics = null) {
       }
     }, 1500);
   } catch (err) {
-    alert('Backend Error');
+    // Bug 3 fix: show the actual error message, not a generic 'Backend Error'
+    alert(err.message || 'Error connecting to backend');
     btn.textContent = 'Check'; btn.disabled = false;
     goStep(1);
   }
@@ -867,6 +888,19 @@ async function showResultsBankStatus() {
     const upiVal = document.getElementById('upi-value');
     if (upiVal) upiVal.textContent = `${bankData.success_rate} - ${bankData.final_score}%`;
 
+    // 🔥 FIX: Update the gauge and icons too!
+    const tier = bankData.success_rate === 'High' ? 'good' : (bankData.success_rate === 'Moderate' ? 'mid' : 'poor');
+    
+    // Update Icons/Colors
+    upiVal.className = `upi-value ${tier}`;
+    const upiWrap = document.getElementById('upi-icon-wrap');
+    if (upiWrap) upiWrap.className = `upi-icon-wrap ${tier}`;
+    const upiIcon = document.getElementById('upi-icon');
+    if (upiIcon) upiIcon.textContent = tier === 'good' ? '✅' : tier === 'mid' ? '⚠️' : '🚨';
+
+    // Redraw Gauge
+    drawGauge('results-risk-gauge', bankData.final_score, 'results-risk-label');
+
     container.classList.remove('hidden');
   } catch (e) { console.error("Bank fetch error", e); }
 }
@@ -989,10 +1023,9 @@ async function submitFeedbackNew() {
   fbOutcome = null; fbStar = 0;
 }
 
-function resetApp() {
-  document.getElementById('loc-input').value = '';
-  document.getElementById('back-from-5').classList.remove('hidden');
-  currentSig = null;
+function resetFeedbackUI() {
+  fbOutcome = null;
+  fbStar = 0;
   document.getElementById('feedback-main').classList.remove('hidden');
   document.getElementById('feedback-thanks-card').classList.add('hidden');
   document.getElementById('fb-outcome-section').classList.remove('hidden');
@@ -1001,11 +1034,25 @@ function resetApp() {
   document.querySelectorAll('.fb-outcome-btn').forEach(b => b.classList.remove('selected'));
   document.querySelectorAll('.fb-chip').forEach(c => c.classList.remove('selected'));
   document.querySelectorAll('.fb-star').forEach(s => s.classList.remove('active'));
+}
+
+function resetApp() {
+  document.getElementById('loc-input').value = '';
+  document.getElementById('back-from-5').classList.remove('hidden');
+  currentSig = null;
+  resetFeedbackUI();
   const rbs = document.getElementById('results-bank-select');
   if (rbs) rbs.value = '';
   const rbsC = document.getElementById('results-bank-status');
   if (rbsC) rbsC.classList.add('hidden');
-  goStep(1);
+  
+  if (isLiveSession) {
+    // 🔥 Go back to Main Dashboard for GPS checks
+    switchDashboardTab('dash-content');
+  } else {
+    // 🔍 Go back to Search Bar for manual checks
+    goStep(1);
+  }
 }
 
 // ── AI Panel ──
@@ -1061,13 +1108,14 @@ function initMap() {
       map = L.map('real-map').setView([currentLat, currentLng], 16);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(map);
       mapMarker = L.marker([currentLat, currentLng]).addTo(map).bindPopup('<b>You are here</b>', { closeOnClick: false, autoClose: false }).openPopup();
-      betterNetworkCircle = L.circle([currentLat + 0.001, currentLng + 0.0015], { color: '#22c55e', fillColor: '#22c55e', fillOpacity: 0.2, radius: 100 }).addTo(map).bindPopup('Better Network Zone');
+      // No static circle here — updateMapWithPrediction draws the real one from backend data
     } else {
       map.invalidateSize();
       map.flyTo([currentLat, currentLng], 16, { duration: 1 });
       mapMarker.setLatLng([currentLat, currentLng]).openPopup();
-      betterNetworkCircle.setLatLng([currentLat + 0.001, currentLng + 0.0015]);
     }
+    // If we already have prediction data, draw the smart zone immediately
+    if (window.lastPredictionData) updateMapWithPrediction(window.lastPredictionData);
   };
   render();
   if (navigator.geolocation) {
