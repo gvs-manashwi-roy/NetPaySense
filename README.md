@@ -37,6 +37,7 @@ Create a `.env` file in the root directory:
 ```bash
 SUPABASE_URL=your_supabase_url
 SUPABASE_KEY=your_supabase_key
+OPENCELL_API_KEY=your_API_KEY
 ```
 
 ### 3. Set Up Virtual Environment
