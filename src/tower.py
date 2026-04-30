@@ -1,6 +1,9 @@
 import math
 import requests
-from mnc_mcc import MNC_LOOKUP
+try:
+    from .mnc_mcc import MNC_LOOKUP
+except ImportError:
+    from mnc_mcc import MNC_LOOKUP
 
 def haversine_distance(lat1, lon1, lat2, lon2):
     R = 6371000

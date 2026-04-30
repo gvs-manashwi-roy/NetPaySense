@@ -755,7 +755,7 @@ function populateSignal(sig) {
   // Handle Verified/Operator display
   const vBox = document.getElementById('results-verified-box');
   const opName = document.getElementById('results-operator-name');
-  if (vBox && sig.metrics && sig.metrics.is_verified) {
+  if (vBox && sig.metrics && (sig.metrics.is_verified || sig.metrics.operator !== 'Unknown')) {
     vBox.classList.remove('hidden');
     if (opName) opName.textContent = sig.metrics.operator || 'Mobile';
   } else if (vBox) {

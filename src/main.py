@@ -2,7 +2,10 @@ from dotenv import load_dotenv
 load_dotenv()  # Must be first — loads SUPABASE_URL and SUPABASE_KEY from .env
 
 from fastapi import FastAPI, HTTPException, Request
-import tower
+try:
+    from . import tower
+except ImportError:
+    import tower
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -319,8 +322,10 @@ async def predict(req: PredictionRequest):
         ui_data = get_ui_data(final_quality, upi_score, has_alert)
 
         # ----------- REAL SIM OPERATOR DETECTION -----------
-        nearest_tower_data = tower.find_nearest_tower(req.lat, req.lon, OPENCELL_API_KEY)
+        nearest_tower_data = tower.find_nearest_tower(req.lat, req.lon, OPENCELL_API_KEY) if OPENCELL_API_KEY else {}
         best_operator = nearest_tower_data.get("operator", "Unknown")
+
+
 
         # 3. Bank Status Override (Official Scraper Data)
         bank_warning = None
@@ -351,7 +356,7 @@ async def predict(req: PredictionRequest):
                 "download": f"{dn:.2f} Mbps", 
                 "upload": f"{up:.2f} Mbps",
                 "latency": f"{lat:.1f} ms",
-                "is_verified": is_verified,
+                "is_verified": is_verified or bool(nearest_tower_data),
                 "operator": live_operator or best_operator
             },
             "community_alert": has_alert
