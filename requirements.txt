@@ -16,4 +16,3 @@ geopandas
 shapely
 scipy
 apscheduler
-selenium
