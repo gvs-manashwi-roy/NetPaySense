@@ -771,3 +771,43 @@ body[data-theme="dark"] .lang-btn option {
 select {
   color-scheme: light dark;
 }
+.lang-box {
+  position: fixed;
+  top: 90px;
+  right: 20px;
+  z-index: 9999;
+}
+
+.lang-menu {
+  margin-top: 8px;
+  background: white;
+  color: black;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+}
+
+.lang-menu div {
+  padding: 10px 14px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.lang-menu div:hover {
+  background: #2563eb;
+  color: white;
+}
+
+/* DARK MODE */
+[data-theme="dark"] .lang-menu {
+  background: #1e293b;
+  color: white;
+}
+
+[data-theme="dark"] .lang-menu div:hover {
+  background: #2563eb;
+}
+
+.hidden {
+  display: none;
+}
