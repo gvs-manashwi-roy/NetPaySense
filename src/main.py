@@ -118,7 +118,8 @@ async def startup_event():
     print("Bank scraper disabled in deployment")
 
     threading.Thread(target=load_geo_data, daemon=True).start()
-    threading.Thread(target=load_models, daemon=True).start()
+    #threading.Thread(target=load_models, daemon=True).start()
+    models_loaded = True
     
 def isInKarnataka(lat: float, lon: float) -> bool:
     if karnataka is None:
