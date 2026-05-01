@@ -12,3 +12,7 @@ python-dotenv
 requests
 supabase
 speedtest-cli
+geopandas
+shapely
+scipy
+apscheduler
