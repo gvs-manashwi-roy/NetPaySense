@@ -59,11 +59,11 @@ body {
   color: var(--text);
   -webkit-text-size-adjust: 100%;
   transition: background 0.3s;
+  overflow-x: hidden;
 }
 
 .shell {
-  width: 100vw;
-  max-width: 480px;
+  width: 100%;
   background: var(--shell-bg);
   min-height: 100vh;
   min-height: -webkit-fill-available;
@@ -428,7 +428,7 @@ body {
   width: 60px; height: 60px; 
   background: white; 
   border: 1.5px solid #e2e8f0; 
-  border-radius: 20px; 
+  border-radius: 50%; 
   box-shadow: 0 8px 24px rgba(0,0,0,0.12); 
   display: flex; align-items: center; justify-content: center; 
   cursor: pointer; 
@@ -656,7 +656,7 @@ body {
 /* ── Desktop ── */
 @media (min-width: 500px) {
   body { align-items: flex-start; padding: 0; }
-  .shell { width: 100%; max-width: 480px; min-height: 100vh; border-radius: 0; box-shadow: none; }
+  .shell { width: 100%; max-width: 480px; min-height: 100vh; border-radius: 0; box-shadow: none; margin: 0 auto; }
   .header { padding: 20px 40px; }
   .logo { font-size: 1.4rem; }
   .main { max-width: 600px; margin: 0 auto; width: 100%; padding: 28px 32px 100px; gap: 18px; }
