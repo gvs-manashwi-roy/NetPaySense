@@ -17,7 +17,10 @@ import os
 import json
 from supabase import create_client, Client
 import threading
-import speedtest
+try:
+    import speedtest
+except:
+    speedtest = None
 from datetime import datetime, timedelta
 from typing import Optional, List, Dict
 import pandas as pd
@@ -68,14 +71,18 @@ async def startup_event():
     
     print("Background Scraper Started (Interval: 5 min)")
 
-gdf = gpd.read_file(DATA_PATH / "IndiaStatesBoundaryShapes/India_State_Boundary.shp")
-gdf = gdf.to_crs(epsg=4326) # converts to lat/lon
-karnataka = gdf[gdf["STATE"] == "KARNATAKA"]
-
+try:
+    gdf = gpd.read_file(DATA_PATH / "IndiaStatesBoundaryShapes/India_State_Boundary.shp")
+    gdf = gdf.to_crs(epsg=4326)
+    karnataka = gdf[gdf["STATE"] == "KARNATAKA"]
+except Exception as e:
+    print("Geo load error:", e)
+    karnataka = None
 def isInKarnataka(lat: float, lon: float) -> bool:
+    if karnataka is None:
+        return True  # allow all if geo data failed
     point = Point(lon, lat)
     return karnataka.geometry.contains(point).any()
-
 # ----------- ML MODELS -----------
 class OoklaNN(nn.Module):
     def __init__(self, input_size):
@@ -369,7 +376,10 @@ async def predict(req: PredictionRequest):
 async def pulse_test():
     """Runs a real-time speed test (Ping, Download, Upload, Operator)."""
     try:
-        st = speedtest.Speedtest()
+        if speedtest is None:
+    return {"error": "Speedtest module not available"}
+
+st = speedtest.Speedtest()
         st.get_best_server()
         
         ping = st.results.ping
