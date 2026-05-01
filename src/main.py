@@ -1,3 +1,8 @@
+print("🔥 APP STARTED EXECUTION")
+from dotenv import load_dotenv
+load_dotenv()  # Must be first — loads SUPABASE_URL and SUPABASE_KEY from .env
+
+from fastapi import FastAPI, HTTPException, Request
 app = FastAPI(title="NetPaySense API")
 # -------- SAFE GLOBAL INITIALIZATION --------
 karnataka = None
@@ -6,10 +11,6 @@ tree = None
 ookla_scaler = None
 signal_model = None
 models_loaded = False
-from dotenv import load_dotenv
-load_dotenv()  # Must be first — loads SUPABASE_URL and SUPABASE_KEY from .env
-
-from fastapi import FastAPI, HTTPException, Request
 try:
     from . import tower
 except ImportError:
@@ -621,3 +622,8 @@ app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="static")
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
+except Exception as e:
+    print("🔥 CRASH ERROR:", e)
+    import traceback
+    traceback.print_exc()
