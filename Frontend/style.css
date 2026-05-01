@@ -410,73 +410,7 @@ body {
 .alert-text p { font-size: 0.85rem; opacity: 0.95; line-height: 1.4; }
 
 
-/* ── CSS Variables (Light & Dark) ── */
-:root {
-  --bg: linear-gradient(170deg, #dbeafe 0%, #eff6ff 60%, #f8fafc 100%);
-  --shell-bg: #f0f8ff;
-  --card-bg: #ffffff;
-  --card-border: #e8f4ff;
-  --text: #1e293b;
-  --text-muted: #64748b;
-  --text-heading: #1e40af;
-  --input-bg: #ffffff;
-  --input-color: #1e3a8a;
-  --placeholder: #94a3b8;
-  --nav-bg: #ffffff;
-  --header-bg: linear-gradient(135deg, #2563eb, #3b82f6);
-  --dash-stat-bg: #f0f7ff;
-  --search-border: #e0f0ff;
-  --recent-hover: #eff6ff;
-  --skeleton-base: #e2e8f0;
-  --skeleton-shine: #f8fafc;
-  --settings-bg: #ffffff;
-  --settings-border: #e8f4ff;
-  --divider: #f1f5f9;
-}
-
-.lang-btn {
-  background: linear-gradient(135deg,#0ea5e9,#2563eb);
-  color: white;
-  border: none;
-  padding: 10px 14px;
-  border-radius: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
-  appearance: none;
-}
-
-.lang-btn option {
-  background: white;
-  color: black;
-}
-
-[data-theme="dark"] {
-  --bg: linear-gradient(170deg, #0f172a 0%, #1e293b 60%, #0f172a 100%);
-  --shell-bg: #1e293b;
-  --card-bg: #273549;
-  --card-border: #334155;
-  --text: #e2e8f0;
-  --text-muted: #94a3b8;
-  --text-heading: #93c5fd;
-  --input-bg: #1e293b;
-  --input-color: #bfdbfe;
-  --placeholder: #64748b;
-  --nav-bg: #1e293b;
-  --header-bg: linear-gradient(135deg, #1d4ed8, #2563eb);
-  --dash-stat-bg: #1e3a5f;
-  --search-border: #334155;
-  --recent-hover: #1e3a5f;
-  --skeleton-base: #334155;
-  --skeleton-shine: #3f5068;
-  --settings-bg: #273549;
-  --settings-border: #334155;
-  --divider: #334155;
-}
-
-*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-
-html { color-scheme: light dark; }
+/* the code where i deleted it for checking things ........ */
 
 body {
   font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
