@@ -1,3 +1,11 @@
+app = FastAPI(title="NetPaySense API")
+# -------- SAFE GLOBAL INITIALIZATION --------
+karnataka = None
+look_up_df = None
+tree = None
+ookla_scaler = None
+signal_model = None
+models_loaded = False
 from dotenv import load_dotenv
 load_dotenv()  # Must be first — loads SUPABASE_URL and SUPABASE_KEY from .env
 
@@ -66,6 +74,36 @@ def load_geo_data():
         print("Geo load failed:", e)
         karnataka = None
 
+def load_models():
+    global ookla_model, ookla_scaler, signal_model, look_up_df, tree, models_loaded
+    try:
+        print("Loading models...")
+
+        ookla_model.load_state_dict(torch.load(MODEL_PATH / 'ookla_nn.pth'))
+        ookla_model.eval()
+
+        ookla_scaler = joblib.load(MODEL_PATH / 'ookla_scaler.pkl')
+        signal_model = joblib.load(MODEL_PATH / 'signal_xgb.pkl')
+
+        look_up_df = pd.read_csv(DATA_PATH / 'final_dataset.csv')
+        look_up_df['download_mbps'] = look_up_df['avg_d_kbps'] / 1000
+        look_up_df['upload_mbps'] = look_up_df['avg_u_kbps'] / 1000
+        look_up_df['latency_ms'] = look_up_df['avg_lat_ms']
+
+        look_up_df = look_up_df[
+            (look_up_df['download_mbps'] > 0) &
+            (look_up_df['latency_ms'] > 0)
+        ]
+
+        coords = look_up_df[['lat', 'lon']].values
+        tree = KDTree(coords)
+
+        models_loaded = True
+        print("Models loaded successfully")
+
+    except Exception as e:
+        print("Model load failed:", e)
+
 @app.on_event("startup")
 async def startup_event():
     print(f"SERVER STARTING FROM: {os.path.abspath(__file__)}")
@@ -127,6 +165,7 @@ ookla_model = OoklaNN(input_size=5)
 #coords = look_up_df[['lat', 'lon']].values
 #tree = KDTree(coords)
 
+
 # ----------- SCHEMA -----------
 class PredictionRequest(BaseModel):
     lat: float
@@ -186,6 +225,10 @@ def get_ui_data(quality_score, upi_score, community_alert=False):
 # ----------- MAIN PREDICTION -----------
 @app.post("/predict")
 async def predict(req: PredictionRequest):
+    if not models_loaded:
+       return {"status": "loading", "message": "Models are loading, try again shortly"}
+    if tree is None or look_up_df is None:
+        return {"status": "loading", "message": "Data still initializing"}
     if not isInKarnataka(req.lat, req.lon):
         return JSONResponse(status_code=403, content={
             "status": "out_of_range",
