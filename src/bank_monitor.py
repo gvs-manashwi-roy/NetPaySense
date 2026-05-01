@@ -54,8 +54,9 @@ logging.basicConfig(
 # ─────────────────────────────────────────────
 def fetch_bank_health():
     if webdriver is None:
-    print("Selenium not available, skipping scraper")
+        print("Selenium not available, skipping scraper")
     return False
+    
     """Scrapes bank health data and saves it to CSV."""
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     logging.info("Starting scrape...")
