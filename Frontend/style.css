@@ -62,10 +62,11 @@ body {
 }
 
 .shell {
-  width: 100%;
+  width: 100vw;
   max-width: 480px;
   background: var(--shell-bg);
-  min-height: 100vh; min-height: 100dvh;
+  min-height: 100vh;
+  min-height: -webkit-fill-available;
   display: flex; flex-direction: column;
   position: relative;
   box-shadow: 0 0 40px rgba(0,0,0,0.1);
@@ -655,7 +656,7 @@ body {
 /* ── Desktop ── */
 @media (min-width: 500px) {
   body { align-items: flex-start; padding: 0; }
-  .shell { width: 100%; max-width: 100%; min-height: 100vh; border-radius: 0; box-shadow: none; }
+  .shell { width: 100%; max-width: 480px; min-height: 100vh; border-radius: 0; box-shadow: none; }
   .header { padding: 20px 40px; }
   .logo { font-size: 1.4rem; }
   .main { max-width: 600px; margin: 0 auto; width: 100%; padding: 28px 32px 100px; gap: 18px; }
