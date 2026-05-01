@@ -10,6 +10,7 @@
 - **🗺️ Smart Network Map**: AI-suggested "Better Network Zones" visualized on a live map, recommending the absolute best signal spot within 50 meters.
 - **🏦 Real-time Bank Pulse**: Live 60-second health monitoring of major Indian banks (SBI, HDFC, ICICI, etc.) synced via Supabase.
 - **🚨 Community Failure Alerts**: Crowd-sourced regional failure detection that warns users if nearby payments are failing in real-time.
+- **🗼 Tower Intelligence**: Real-time nearest cell tower detection via OpenCellID API, mapping MNC/MCC codes to major Indian operators (Airtel, Jio, BSNL, Vi) for hyper-local network recommendations.
 - **✨ Premium Glassmorphism UI**: A high-end, mobile-first design system with optimized Dark/Light modes and custom-styled localized components.
 
 ---
@@ -72,6 +73,7 @@ The **UPI Success Chance** is determined by a deterministic physics model:
 2. **Bandwidth Requirements**: Minimum 1.0 Mbps upload required for consistent payment handshakes.
 3. **Smart Optimization**: KDTree identifies the best performance neighbor among the 10 nearest spatial data points.
 4. **Bank Override**: High network quality is automatically downgraded if the selected bank's UPI server is reporting `DOWN` or `FLUCTUATING`.
+5. **Operator Awareness**: Uses live MNC/MCC data from OpenCellID to identify the nearest operator tower, providing dynamic recommendations (e.g., "Use Airtel") instead of generic suggestions.
 
 ---
 
