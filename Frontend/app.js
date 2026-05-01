@@ -786,7 +786,20 @@ function initMap() {
     }, err => { }, { enableHighAccuracy: true, timeout: 5000 });
   }
 }
+function toggleLangMenu() {
+  document.getElementById("lang-menu").classList.toggle("hidden");
+}
 
+function selectLang(lang) {
+  changeLang(lang); // your existing function
+
+  // update button text
+  document.getElementById("current-lang").innerText =
+    lang === "kn" ? "Kannada" : "English";
+
+  // close menu
+  document.getElementById("lang-menu").classList.add("hidden");
+}
 // ── Init ──
 initTheme();
 initOnboarding();
