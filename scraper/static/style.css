@@ -1,0 +1,64 @@
+body {
+    font-family: Arial;
+    background: #f4f6f9;
+    margin: 0;
+    text-align: center;
+}
+
+.header {
+    background: #3b6cb7;
+    color: white;
+    padding: 20px;
+    font-size: 26px;
+}
+
+.container {
+    margin-top: 40px;
+}
+
+select {
+    padding: 12px;
+    width: 300px;
+    font-size: 16px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+}
+
+.card {
+    margin: 30px auto;
+    width: 380px;
+    background: white;
+    padding: 25px;
+    border-radius: 12px;
+    box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.1);
+    display: none;
+}
+
+.status {
+    font-size: 20px;
+    margin-top: 10px;
+}
+
+.up {
+    color: green;
+}
+
+.down {
+    color: red;
+}
+
+.fluctuating {
+    color: orange;
+}
+
+.timestamp {
+    font-size: 12px;
+    color: gray;
+    margin-top: 10px;
+}
+
+.stale {
+    color: red;
+    font-size: 13px;
+    margin-top: 8px;
+}

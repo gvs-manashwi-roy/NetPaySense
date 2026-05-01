@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Bank UPI Status</title>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+
+    <div class="header">
+        Bank Server Status
+    </div>
+
+    <div class="container">
+
+        <h3>Select Bank</h3>
+
+        <select id="bankDropdown" onchange="fetchBankStatus()">
+            <option value="">Choose Bank</option>
+            <option value="State Bank of India (SBI)">SBI</option>
+            <option value="HDFC Bank">HDFC Bank</option>
+            <option value="ICICI Bank">ICICI Bank</option>
+            <option value="Axis Bank">Axis Bank</option>
+            <option value="Punjab National Bank">PNB</option>
+        </select>
+
+        <div class="card" id="statusCard">
+            <h2 id="bankName">Select a bank</h2>
+
+            <div id="upiStatus" class="status"></div>
+
+            <div id="timestamp" class="timestamp"></div>
+
+            <div id="staleWarning" class="stale"></div>
+        </div>
+
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+
+</body>
+
+</html>

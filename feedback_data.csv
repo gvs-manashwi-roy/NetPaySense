@@ -1,0 +1,28 @@
+lat,lon,outcome,metrics,timestamp
+12.975118465945602,77.58819580078125,failed,{},2026-04-23T16:42:41.926320
+12.975118465945602,77.58819580078125,failed,{},2026-04-23T16:45:33.796376
+13.43503799481389,75.62164306640625,failed,{},2026-04-23T16:47:17.606890
+13.43503799481389,75.62164306640625,failed,{},2026-04-23T16:48:27.106270
+12.93764527025943,77.62664794921875,failed,{},2026-04-24T12:18:00.706580
+12.93764527025943,77.62664794921875,failed,{},2026-04-24T13:35:25.281371
+13.43503799481389,75.62164306640625,failed,{},2026-04-24T14:00:01.624794
+13.43503799481389,75.62164306640625,failed,"{'download': '29.66 Mbps', 'latency': '39.0 ms'}",2026-04-24T14:04:17.271318
+13.413665691176217,75.76995849609375,failed,"{'download': '2.41 Mbps', 'latency': '44.0 ms'}",2026-04-24T14:09:26.151350
+13.33350264081058,75.76995849609375,pending,"{'download': '213.28 Mbps', 'latency': '25.0 ms'}",2026-04-24T14:21:44.239405
+13.33350264081058,75.76995849609375,failed,"{'download': '213.28 Mbps', 'latency': '25.0 ms'}",2026-04-24T14:21:56.737208
+12.975118465945602,77.58819580078125,failed,"{'download': '53.79 Mbps', 'latency': '34.0 ms'}",2026-04-24T14:30:54.047129
+13.327431042017018,75.75545971707027,failed,"{'download': '287.90 Mbps', 'latency': '23.0 ms'}",2026-04-24T18:34:54.963974
+13.327441311707242,75.7554430918607,failed,"{'download': '287.90 Mbps', 'latency': '23.0 ms'}",2026-04-24T19:01:01.847269
+13.327394757102649,75.75544119377253,failed,"{'download': '287.90 Mbps', 'latency': '23.0 ms'}",2026-04-24T20:45:07.699836
+13.3272615,75.755428,failed,"{'download': '29.61 Mbps', 'upload': '30.21 Mbps', 'latency': '145.1 ms', 'is_verified': True, 'operator': 'Jio'}",2026-04-26T14:48:17.952396
+13.3272615,75.755428,failed,"{'download': '21.40 Mbps', 'upload': '13.67 Mbps', 'latency': '129.4 ms', 'is_verified': True, 'operator': 'Jio'}",2026-04-26T14:50:46.898136
+13.3269667,75.7576806,failed,"{'download': '15.84 Mbps', 'upload': '2.40 Mbps', 'latency': '71.2 ms', 'is_verified': True, 'operator': 'Jio'}",2026-04-26T15:03:32.606667
+13.32774925,75.75561299999998,success,"{'download': '74.09 Mbps', 'upload': '8.57 Mbps', 'latency': '57.8 ms', 'is_verified': True, 'operator': 'Jio'}",2026-04-26T15:08:35.725514
+13.32728,75.755483,success,"{'download': '59.46 Mbps', 'upload': '8.20 Mbps', 'latency': '51.5 ms', 'is_verified': True, 'operator': 'Jio'}",2026-04-26T15:11:49.057942
+13.327418340191038,75.75542754445262,success,"{'download': '2.13 Mbps', 'upload': '13.26 Mbps', 'latency': '54.9 ms', 'is_verified': True, 'operator': 'Jio'}",2026-04-27T21:21:29.492786
+13.327418340191038,75.75542754445262,success,"{'download': '19.47 Mbps', 'upload': '22.85 Mbps', 'latency': '46.4 ms', 'is_verified': True, 'operator': 'Jio'}",2026-04-27T21:24:11.215347
+13.327273,75.755472,failed,"{'download': '287.90 Mbps', 'upload': '17.52 Mbps', 'latency': '23.0 ms', 'is_verified': False, 'operator': 'Regional Tower'}",2026-04-27T21:30:24.799607
+13.32779840956362,75.75602236113505,success,"{'download': '287.90 Mbps', 'upload': '17.52 Mbps', 'latency': '23.0 ms', 'is_verified': True, 'operator': 'Jio'}",2026-04-28T11:51:08.931583
+13.3286652,75.7565905,success,"{'download': '252.26 Mbps', 'upload': '81.30 Mbps', 'latency': '39.0 ms', 'is_verified': True, 'operator': 'Jio'}",2026-04-28T11:52:53.152358
+13.327749636115456,75.75588426556413,failed,"{'download': '29.65 Mbps', 'upload': '30.91 Mbps', 'latency': '40.1 ms', 'is_verified': True, 'operator': 'Jio'}",2026-04-28T13:28:26.480991
+13.327762507700577,75.7559418563076,success,"{'download': '24.68 Mbps', 'upload': '29.05 Mbps', 'latency': '54.8 ms', 'is_verified': True, 'operator': 'Jio'}",2026-04-28T14:24:45.621301
