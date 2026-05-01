@@ -369,3 +369,20 @@ body {
   .spinner { width: 80px; height: 80px; }
   .analyzing-steps { max-width: 360px; }
 }
+/* ── Language Selector ── */
+.lang-select {
+  background: rgba(255,255,255,0.15);
+  border: 1px solid rgba(255,255,255,0.3);
+  color: white;
+  border-radius: 8px;
+  padding: 4px 8px;
+  font-size: 0.8rem;
+  font-family: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+}
+.lang-select:focus { border-color: rgba(255,255,255,0.6); }
+.lang-select option { color: #1e293b; background: white; }
