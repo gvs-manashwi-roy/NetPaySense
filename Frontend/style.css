@@ -1,7 +1,7 @@
 
 /* ── CSS Variables (Light & Dark) ── */
 :root {
-  --bg: #4a148c; /* 🔥 NUCLEAR PURPLE TEST */
+  --bg: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); /* Premium Slate Backdrop */
   --shell-bg: #f0f8ff;
   --card-bg: #ffffff;
   --card-border: #e8f4ff;
@@ -20,7 +20,7 @@
   --skeleton-shine: #f8fafc;
   --settings-bg: #ffffff;
   --settings-border: #e8f4ff;
-  --bg-primary: #4a148c; /* 🔥 VISUAL SYNC TEST (BRIGHT PURPLE) */
+  --bg-primary: #1e293b; 
   --divider: #f1f5f9;
 }
 
