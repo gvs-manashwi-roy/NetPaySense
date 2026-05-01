@@ -10,3 +10,4 @@ joblib
 pydantic
 python-dotenv
 requests
+supabase
