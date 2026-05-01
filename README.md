@@ -1,26 +1,25 @@
-# 🛰️ NetPaySense: AI-Powered UPI Reliability Checker
+# 🛰️ NetPaySense: AI-Powered UPI Reliability Checker (v4.2 Pro)
 
-**NetPaySense** is a real-time diagnostic tool designed to predict the success probability of UPI payments. It combines **Dual-Model Machine Learning (XGBoost + Neural Networks)** with **Live Bank Server Health Monitoring** and **Community-Driven Regional Alerts** to help users decide if it's safe to proceed with a payment at their current location.
+**NetPaySense** is a real-time diagnostic platform designed to predict the success probability of UPI payments with localized intelligence. It combines **Dual-Model Machine Learning (Neural Networks + KDTree)** with **Live Bank Pulse Monitoring** and **Multilingual v4.2 Localization** to provide a premium, accessible payment safety dashboard.
 
 ---
 
-## 🚀 Key Features
-- **Smart Network Map**: AI-suggested "Better Network Zones" visualized on a live map to help users move to the optimal signal spot.
-- **Physics-Based UPI Success Model**: Precision scoring using first-principles physics (explicit latency, upload, and download penalties).
-- **Supabase Persistence**: Distributed database integration for robust storage of bank health logs and community feedback.
-- **Live Bank Server Scraper**: Real-time health monitoring of major Indian banks, auto-refreshing every minute.
-- **Community Alert System**: Crowdsourced reporting that warns users of regional payment failures within a 2km radius.
-- **Premium Glassmorphism UI**: A state-of-the-art mobile-first dashboard with dynamic risk gauges and bank health grids.
+## 🚀 Key Features (v4.2 Pro)
+- **🌍 Multilingual Intelligence**: Full native support for **Kannada, Hindi, Tamil, and Telugu**, including localized analytics and recommendations.
+- **🎯 Precision Risk Meter**: A state-of-the-art canvas-based gauge providing real-time risk visualization (Low/Medium/High) based on network physics.
+- **🗺️ Smart Network Map**: AI-suggested "Better Network Zones" visualized on a live map, recommending the absolute best signal spot within 50 meters.
+- **🏦 Real-time Bank Pulse**: Live 60-second health monitoring of major Indian banks (SBI, HDFC, ICICI, etc.) synced via Supabase.
+- **🚨 Community Failure Alerts**: Crowd-sourced regional failure detection that warns users if nearby payments are failing in real-time.
+- **✨ Premium Glassmorphism UI**: A high-end, mobile-first design system with optimized Dark/Light modes and custom-styled localized components.
 
 ---
 
 ## 🛠️ Technology Stack
-- **Backend**: [FastAPI](https://fastapi.tiangolo.com/) (Python)
-- **Database**: [Supabase](https://supabase.com/) (PostgreSQL + Real-time)
-- **AI/ML**: [XGBoost](https://xgboost.readthedocs.io/), [PyTorch](https://pytorch.org/)
-- **Data & GIS**: [GeoPandas](https://geopandas.org/), [Shapely](https://shapely.readthedocs.io/), [KDTree](https://scipy.org/)
-- **Frontend**: Vanilla JavaScript (ES6+), CSS3 (Modern Glassmorphism), HTML5
-- **Mapping**: [Leaflet.js](https://leafletjs.com/) (CDN via cdnjs)
+- **Backend**: [FastAPI](https://fastapi.tiangolo.com/) (Python 3.10+)
+- **Database**: [Supabase](https://supabase.com/) (Real-time PostgreSQL)
+- **AI/ML Engine**: [PyTorch](https://pytorch.org/) (Neural Feature Mapping) + [KDTree](https://scipy.org/) (Spatial Optimization)
+- **GIS Logic**: [GeoPandas](https://geopandas.org/), [Shapely](https://shapely.readthedocs.io/)
+- **Frontend**: ES6+ JavaScript, Modern CSS3 (Glassmorphism), [Leaflet.js](https://leafletjs.com/)
 
 ---
 
@@ -33,55 +32,48 @@ cd NetPaySense
 ```
 
 ### 2. Set Up Environment
-Create a `.env` file in the root directory:
+Create a `.env` file in the root directory with your Supabase credentials:
 ```bash
 SUPABASE_URL=your_supabase_url
 SUPABASE_KEY=your_supabase_key
 OPENCELL_API_KEY=your_API_KEY
 ```
 
-### 3. Set Up Virtual Environment
+### 3. Run the Backend
 ```bash
+# Set up virtual environment
 python -m venv .venv
-# On Windows:
-.venv\Scripts\activate
-```
+source .venv/bin/activate  # Or .venv\Scripts\activate on Windows
 
-### 4. Install Dependencies
-```bash
+# Install dependencies
 pip install -r requirements.txt
+
+# Start the server
+$env:PYTHONPATH="src"; python -m uvicorn src.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
 ---
 
-## 🏃 How to Run
-
-1. **Start the FastAPI Server**:
-   ```bash
-   $env:PYTHONPATH="src"; python -m uvicorn src.main:app --host 127.0.0.1 --port 8000 --reload
-   ```
-2. **Open the App**:
-   Navigate to **[http://127.0.0.1:8000](http://127.0.0.1:8000)** in your browser.
-
----
-
-## 🔌 API Endpoints
-- `POST /predict`: Spatial-ML prediction using physics-based scoring. Returns `better_location` for the Smart Map.
-- `POST /bank-predict`: Hybrid scoring that weights network quality against real-time bank server health.
+## 🔌 API Intelligence
+- `POST /predict`: Neural-Spatial prediction. Returns `better_location` for the Smart Map and localized signal tiers.
+- `POST /bank-predict`: Hybrid scoring that weights network latency against real-time bank server health.
 - `GET /bank-status`: Returns a live JSON feed of bank health statuses persisted in Supabase.
-- `GET /pulse-test`: Real-time network probe (speedtest) to verify live conditions.
-- `POST /feedback`: Records local payment outcomes for the Community Alert system.
+- `GET /pulse-test`: Real-time network probe (speedtest) to verify live latency and operator stats.
+- `POST /feedback`: Records local payment outcomes for Reinforcement Learning and Community Alerts.
 
 ---
 
-## 🧠 Model Logic & Risk Assessment
-The **UPI Success Chance** is a deterministic model based on network physics:
-1. **Latency Penalty**: Sub-50ms is ideal; >200ms triggers a near-certain timeout warning.
-2. **Bandwidth Checks**: Requires minimum 2Mbps upload for stable UPI handshakes.
-3. **Smart Optimization**: If the current spot is poor, the KDTree identifies the best performance neighbor within the 10 nearest data points.
-4. **Bank Override**: Detects server-side downtime (e.g., SBI or HDFC outages) to prevent user frustration.
+## 🧠 Risk Assessment Logic
+The **UPI Success Chance** is determined by a deterministic physics model:
+1. **Latency Thresholds**: 
+   - < 50ms: Excellent (Green)
+   - 100ms - 150ms: Risky (Amber/Yellow)
+   - \> 200ms: Critical Failure Risk (Red)
+2. **Bandwidth Requirements**: Minimum 1.0 Mbps upload required for consistent payment handshakes.
+3. **Smart Optimization**: KDTree identifies the best performance neighbor among the 10 nearest spatial data points.
+4. **Bank Override**: High network quality is automatically downgraded if the selected bank's UPI server is reporting `DOWN` or `FLUCTUATING`.
 
 ---
 
 ## 🤝 Contributors
-*Developed with ❤️ by the NetPaySense Team.*
+*Developed with ❤️ by the NetPaySense Team. v4.2 Localization by Google DeepMind (Advanced Agentic Coding).*

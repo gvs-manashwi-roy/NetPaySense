@@ -449,9 +449,18 @@ async def bank_predict(req: BankPredictionRequest):
         final_score = req.network_score * 0.4
         status_text = "Fluctuating"
 
+    # Dynamic Operator Check (OpenCellID)
+    nearest_tower_data = tower.find_nearest_tower(req.lat, req.lon, OPENCELL_API_KEY) if OPENCELL_API_KEY else {}
+    best_op = nearest_tower_data.get("operator", "Unknown")
+
     return {
-        "name": req.bank, "status": status_text, "success_rate": "High" if final_score > 80 else ("Moderate" if final_score > 50 else "Low"),
-        "final_score": round(final_score, 1)
+        "name": req.bank, 
+        "status": status_text, 
+        "success_rate": "High" if final_score > 80 else ("Moderate" if final_score > 50 else "Low"),
+        "final_score": round(final_score, 1),
+        "is_stale": stale,
+        "best_network": best_op,
+        "operator": best_op
     }
 
 # ----------- SUPABASE CLIENT -----------
