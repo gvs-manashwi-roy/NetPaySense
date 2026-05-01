@@ -15,14 +15,15 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 </head>
 
-<body>
-  <div style="position:fixed; top:90px; right:20px; z-index:9999;">
-  <select id="lang-select" onchange="changeLang(this.value)" class="next-btn lang-btn">
-  style="padding:8px 12px; border-radius:10px; background: linear-gradient(135deg,#0ea5e9,#2563eb); color: white; border: none; font-weight: 500; cursor: pointer; outline: none;">
-    <option value="en">🌐 Language</option>
-    <option value="kn">Kannada</option>
-    <option value="en">English</option>
-  </select>
+<div class="lang-box">
+  <button class="lang-btn" onclick="toggleLangMenu()">
+    🌐 <span id="current-lang">English</span>
+  </button>
+
+  <div id="lang-menu" class="lang-menu hidden">
+    <div onclick="selectLang('en')">English</div>
+    <div onclick="selectLang('kn')">Kannada</div>
+  </div>
 </div>
 
   <div class="shell">
