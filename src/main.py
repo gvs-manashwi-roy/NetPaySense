@@ -52,7 +52,6 @@ FRONTEND_DIR = BASE_DIR / "Frontend"
 
 OPENCELL_API_KEY = os.getenv("OPENCELL_API_KEY")
 
-app = FastAPI(title="NetPaySense API")
 
 # Enable CORS
 app.add_middleware(
@@ -120,6 +119,7 @@ async def startup_event():
 
     threading.Thread(target=load_geo_data, daemon=True).start()
     threading.Thread(target=load_models, daemon=True).start()
+    
 def isInKarnataka(lat: float, lon: float) -> bool:
     if karnataka is None:
         return True  # allow all if geo data failed
@@ -623,7 +623,3 @@ if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
 
-except Exception as e:
-    print("🔥 CRASH ERROR:", e)
-    import traceback
-    traceback.print_exc()
