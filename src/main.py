@@ -52,20 +52,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-@app.on_event("startup")
-async def startup_event():
-    print(f"SERVER STARTING FROM: {os.path.abspath(__file__)}")
-    print(f"FRONTEND ABSOLUTE PATH: {os.path.abspath(FRONTEND_DIR)}")
-    
-    clean_old_data()
-
-    scheduler = BackgroundScheduler(daemon=True)
-    scheduler.add_job(clean_old_data, 'interval', hours=12)
-    scheduler.start()
-
-    print("Bank scraper disabled in deployment")
-karnataka = None  # default
+karnataka = None
 
 def load_geo_data():
     global karnataka
@@ -78,6 +65,21 @@ def load_geo_data():
     except Exception as e:
         print("Geo load failed:", e)
         karnataka = None
+
+@app.on_event("startup")
+async def startup_event():
+    print(f"SERVER STARTING FROM: {os.path.abspath(__file__)}")
+    print(f"FRONTEND ABSOLUTE PATH: {os.path.abspath(FRONTEND_DIR)}")
+
+    clean_old_data()
+
+    scheduler = BackgroundScheduler(daemon=True)
+    scheduler.add_job(clean_old_data, 'interval', hours=12)
+    scheduler.start()
+
+    print("Bank scraper disabled in deployment")
+
+    threading.Thread(target=load_geo_data, daemon=True).start()
 def isInKarnataka(lat: float, lon: float) -> bool:
     if karnataka is None:
         return True  # allow all if geo data failed
