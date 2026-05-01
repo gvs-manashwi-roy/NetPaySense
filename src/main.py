@@ -65,13 +65,19 @@ async def startup_event():
     scheduler.start()
 
     print("Bank scraper disabled in deployment")
-try:
-    gdf = gpd.read_file(DATA_PATH / "IndiaStatesBoundaryShapes/India_State_Boundary.shp")
-    gdf = gdf.to_crs(epsg=4326)
-    karnataka = gdf[gdf["STATE"] == "KARNATAKA"]
-except Exception as e:
-    print("Geo load error:", e)
-    karnataka = None
+karnataka = None  # default
+
+def load_geo_data():
+    global karnataka
+    try:
+        print("Loading geo data...")
+        gdf = gpd.read_file(DATA_PATH / "IndiaStatesBoundaryShapes/India_State_Boundary.shp")
+        gdf = gdf.to_crs(epsg=4326)
+        karnataka = gdf[gdf["STATE"] == "KARNATAKA"]
+        print("Geo data loaded successfully")
+    except Exception as e:
+        print("Geo load failed:", e)
+        karnataka = None
 def isInKarnataka(lat: float, lon: float) -> bool:
     if karnataka is None:
         return True  # allow all if geo data failed
