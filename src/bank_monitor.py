@@ -4,10 +4,16 @@ import os
 import logging
 from datetime import datetime, timedelta
 import pandas as pd
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.support.ui import WebDriverWait
+try:
+    from selenium import webdriver
+    from selenium.webdriver.common.by import By
+    from selenium.webdriver.chrome.options import Options
+    from selenium.webdriver.support.ui import WebDriverWait
+except ImportError:
+    webdriver = None
+    By = None
+    Options = None
+    WebDriverWait = None
 from pathlib import Path
 from dotenv import load_dotenv
 from supabase import create_client, Client
@@ -47,6 +53,10 @@ logging.basicConfig(
 # SCRAPER LOGIC
 # ─────────────────────────────────────────────
 def fetch_bank_health():
+    if webdriver is None:
+        print("Selenium not available, skipping scraper")
+    return False
+    
     """Scrapes bank health data and saves it to CSV."""
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     logging.info("Starting scrape...")

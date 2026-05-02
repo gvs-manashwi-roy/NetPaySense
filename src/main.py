@@ -325,8 +325,6 @@ async def predict(req: PredictionRequest):
         nearest_tower_data = tower.find_nearest_tower(req.lat, req.lon, OPENCELL_API_KEY) if OPENCELL_API_KEY else {}
         best_operator = nearest_tower_data.get("operator", "Unknown")
 
-
-
         # 3. Bank Status Override (Official Scraper Data)
         bank_warning = None
         if req.bank_name:
@@ -469,21 +467,18 @@ async def bank_predict(req: BankPredictionRequest):
 _supabase_url = os.getenv("SUPABASE_URL", "")
 _supabase_key = os.getenv("SUPABASE_KEY", "")
 
-print(f"DEBUG: SUPABASE_URL set: {bool(_supabase_url)}")
-print(f"DEBUG: SUPABASE_KEY set: {bool(_supabase_key)}")
-
 try:
     if _supabase_url and _supabase_key and not _supabase_url.startswith("https://your"):
         supabase: Client = create_client(_supabase_url, _supabase_key)
         print("Supabase connected.")
     else:
         supabase = None
-        print("Supabase credentials not set - feedback will be disabled. Fill in .env file.")
+        print("Supabase credentials not set - feedback will be disabled.")
 except Exception as e:
     print(f"Supabase Connection Error: {e}")
     supabase = None
 
-# ----------- COMMUNITY FEEDBACK & RL -----------
+# ----------- COMMUNITY FEEDBACK -----------
 
 def get_all_feedback() -> pd.DataFrame:
     """Fetch recent feedback rows from Supabase."""
@@ -519,52 +514,33 @@ def check_nearby_failures(lat, lon, radius_km=2.0):
         recent_failed = df[df['outcome'] == 'failed'].copy()
         recent_failed = recent_failed[recent_failed['timestamp'] >= threshold]
 
-        print(f"DEBUG: Checking alerts near {lat}, {lon}")
-        print(f"DEBUG: Recent failures in last 30 mins: {len(recent_failed)}")
+        if recent_failed.empty: return False
 
-        nearby_count = 0
-        for _, row in recent_failed.iterrows():
-            d_lat = float(row['lat']) - lat
-            d_lon = (float(row['lon']) - lon) * np.cos(np.radians(lat))
-            dist = (d_lat**2 + d_lon**2)**0.5 * 111.32
-            print(f"   -> Found failure at {row['lat']}, {row['lon']} (Dist: {dist:.3f} km)")
-            if dist <= radius_km:
-                nearby_count += 1
-
-        # Require at least 5 nearby failures to avoid false alerts from single reports
-        if nearby_count >= 5:
-            print(f"COMMUNITY ALERT TRIGGERED! ({nearby_count} failures nearby)")
-            return True
-
-        print(f"No alert — only {nearby_count} nearby failure(s) (need 5+)")
-        return False
-    except Exception as e:
-        print(f"Community Alert Error: {e}")
+        from scipy.spatial import KDTree
+        fb_coords = recent_failed[['lat', 'lon']].values
+        fb_tree = KDTree(fb_coords)
+        
+        # Search radius (approx degrees for 2km is ~0.018)
+        indices = fb_tree.query_ball_point([lat, lon], 0.018)
+        return len(indices) >= 5 # Alert if 5+ failures nearby
+    except:
         return False
 
 @app.post("/feedback")
 async def submit_feedback(req: FeedbackRequest):
-    """Store user feedback in Supabase."""
     if supabase is None:
-        raise HTTPException(status_code=503, detail="Feedback storage not configured. Set SUPABASE_URL and SUPABASE_KEY in .env")
+        return {"status": "error", "message": "Supabase not connected"}
     try:
-        record = {
-            "lat":      req.lat,
-            "lon":      req.lon,
-            "outcome":  req.outcome,
-            "metrics":  req.metrics,   # stored as JSONB
-            "timestamp": datetime.now().isoformat(),
-        }
-        supabase.table("feedback").insert(record).execute()
-        return {"status": "recorded"}
+        supabase.table("feedback").insert({
+            "lat": req.lat,
+            "lon": req.lon,
+            "outcome": req.outcome,
+            "metrics": req.metrics,
+            "timestamp": datetime.now().isoformat()
+        }).execute()
+        return {"status": "success"}
     except Exception as e:
-        print(f"Supabase insert error: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to save feedback: {e}")
+        return {"status": "error", "message": str(e)}
 
 # ----------- FRONTEND -----------
 app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="static")
-
-# ----------- RUN -----------
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
