@@ -41,7 +41,7 @@ FRONTEND_DIR = BASE_DIR / "Frontend"
 
 OPENCELL_API_KEY = os.getenv("OPENCELL_API_KEY")
 
-app = FastAPI(title="NetPaySense API")
+app = FastAPI(title="🛰️ NetPaySense: AI-Powered UPI Reliability Checker (v4.3 Pro)")
 
 # Enable CORS
 app.add_middleware(
@@ -356,7 +356,7 @@ async def predict(req: PredictionRequest):
             "recommendation": ui_data["rec"], "confidence": f"{(final_quality + 1) * 30}%", 
             "best_network": best_operator if best_operator != "Unknown" else (live_operator or "Airtel / Jio"),
             "bank_warning": bank_warning,
-            "server_version": "v4.1",
+            "server_version": "v4.3",
             "metrics": { 
                 "download": f"{dn:.2f} Mbps", 
                 "upload": f"{up:.2f} Mbps",
