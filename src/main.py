@@ -324,6 +324,10 @@ async def predict(req: PredictionRequest):
         # ----------- REAL SIM OPERATOR DETECTION -----------
         nearest_tower_data = tower.find_nearest_tower(req.lat, req.lon, OPENCELL_API_KEY) if OPENCELL_API_KEY else {}
         best_operator = nearest_tower_data.get("operator", "Unknown")
+        
+        # 🔥 Fallback: If no tower found, default to most likely operators for Karnataka
+        if best_operator == "Unknown":
+            best_operator = "Jio / Airtel"
 
 
 

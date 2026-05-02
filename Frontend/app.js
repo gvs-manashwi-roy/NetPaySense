@@ -26,8 +26,7 @@ if (typeof window.APP_LOADED === 'undefined') {
       section_notifications: 'Notifications',
       notif_risk: 'Payment Risk Alerts',
       notif_risk_sub: 'Get notified on high risk',
-      vibration: 'Vibration',
-      vibration_sub: 'Haptic feedback on actions',
+
       section_privacy: 'Data & Privacy',
       clear_history: 'Clear Search History',
       clear_history_sub: 'Remove all recent checks',
@@ -145,8 +144,7 @@ if (typeof window.APP_LOADED === 'undefined') {
       section_notifications: 'ಅಧಿಸೂಚನೆಗಳು',
       notif_risk: 'ಪಾವತಿ ಅಪಾಯದ ಎಚ್ಚರಿಕೆಗಳು',
       notif_risk_sub: 'ಹೆಚ್ಚಿನ ಅಪಾಯದ ಬಗ್ಗೆ ಅಧಿಸೂಚನೆ ಪಡೆಯಿರಿ',
-      vibration: 'ಕಂಪನ',
-      vibration_sub: 'ಕ್ರಿಯೆಗಳ ಮೇಲೆ ಹ್ಯಾಪ್ಟಿಕ್ ಪ್ರತಿಕ್ರಿಯೆ',
+
       section_privacy: 'ಡೇಟಾ ಮತ್ತು ಗೌಪ್ಯತೆ',
       clear_history: 'ಹುಡುಕಾಟದ ಇತಿಹಾಸವನ್ನು ಅಳಿಸಿ',
       clear_history_sub: 'ಎಲ್ಲಾ ಇತ್ತೀಚಿನ ಪರಿಶೀಲನೆಗಳನ್ನು ತೆಗೆದುಹಾಕಿ',
@@ -264,8 +262,7 @@ if (typeof window.APP_LOADED === 'undefined') {
       section_notifications: 'सूचनाएं',
       notif_risk: 'भुगतान जोखिम अलर्ट',
       notif_risk_sub: 'उच्च जोखिम पर सूचना प्राप्त करें',
-      vibration: 'कंपन',
-      vibration_sub: 'क्रियाओं पर हैप्टिक फीडबैक',
+
       section_privacy: 'डेटा और गोपनीयता',
       clear_history: 'खोज इतिहास मिटाएं',
       clear_history_sub: 'सभी हालिया जांच हटा दें',
@@ -383,8 +380,7 @@ if (typeof window.APP_LOADED === 'undefined') {
       section_notifications: 'அறிவிப்புகள்',
       notif_risk: 'கட்டண அபாய எச்சரிக்கைகள்',
       notif_risk_sub: 'அதிக அபாயம் குறித்து அறிவிப்பைப் பெறுங்கள்',
-      vibration: 'அதிர்வு',
-      vibration_sub: 'செயல்களுக்கான ஹேப்டிக் பின்னூட்டம்',
+
       section_privacy: 'தரவு மற்றும் தனியுரிமை',
       clear_history: 'தேடல் வரலாற்றை அழி',
       clear_history_sub: 'அனைத்து சமீபத்திய சரிபார்ப்புகளையும் அகற்று',
@@ -502,8 +498,7 @@ if (typeof window.APP_LOADED === 'undefined') {
       section_notifications: 'నోటిఫికేషన్‌లు',
       notif_risk: 'చెల్లింపు రిస్క్ హెచ్చరికలు',
       notif_risk_sub: 'అధిక రిస్క్ ఉన్నప్పుడు నోటిఫికేషన్ పొందండి',
-      vibration: 'వైబ్రేషన్',
-      vibration_sub: 'చర్యలపై హ్యాప్టిక్ ఫీడ్‌బ్యాక్',
+
       section_privacy: 'డేటా & గోప్యత',
       clear_history: 'శోధన చరిత్రను తుడిచివేయి',
       clear_history_sub: 'అన్ని ఇటీవలి తనిఖీలను తొలగించు',
@@ -1244,6 +1239,9 @@ function goToLocationChecker() {
 
   document.getElementById('dashboard-panel').classList.add('hidden');
   document.getElementById('app-main').classList.remove('hidden');
+
+  // 🔥 FIX: Ensure we start at Step 1 (Search Bar) and not the previous result
+  goStep(1);
 }
 
 function getMyLocation() {
@@ -1572,15 +1570,9 @@ function populateSignal(sig) {
   // Handle Verified/Operator display
   const vBox = document.getElementById('results-verified-box');
   const opName = document.getElementById('results-operator-name');
-  if (vBox && sig.metrics && sig.metrics.operator && sig.metrics.operator !== 'Unknown') {
+  if (vBox && sig.metrics && (sig.metrics.is_verified || sig.metrics.operator !== 'Unknown')) {
     vBox.classList.remove('hidden');
-    
-    // Dynamically set the text based on whether it's verified (live test) or just detected (nearby)
-    const opName = document.getElementById('results-operator-name');
-    const opStatus = document.getElementById('results-verification-status');
-    
-    if (opName) opName.textContent = sig.metrics.operator;
-    if (opStatus) opStatus.textContent = sig.metrics.is_verified ? 'Verified' : 'Nearest Tower';
+    if (opName) opName.textContent = sig.metrics.operator || 'Mobile';
   } else if (vBox) {
     vBox.classList.add('hidden');
   }
@@ -1596,7 +1588,7 @@ function populateRecs(tier, operator) {
   const list = document.getElementById('rec-list');
   list.innerHTML = '';
   const langRecs = REC_TRANSLATIONS[currentLang] || REC_TRANSLATIONS.en;
-  
+
   console.log("DEBUG: populating recs for tier:", tier, "with operator:", operator);
 
   langRecs[tier].forEach(r => {
@@ -1949,6 +1941,7 @@ function sendAiMsg(text, fromInput = false) {
 
 // ── Dashboard Tabs ──
 function switchDashboardTab(tabId, el) {
+  window.scrollTo({ top: 0, behavior: 'smooth' });
   document.getElementById('app-main').classList.add('hidden');
   document.getElementById('dashboard-panel').classList.remove('hidden');
   ['dash-content', 'dash-map', 'dash-bank'].forEach(id => document.getElementById(id).classList.add('hidden'));
