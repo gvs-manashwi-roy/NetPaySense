@@ -10,3 +10,9 @@ joblib
 pydantic
 python-dotenv
 requests
+supabase
+geopandas
+shapely
+speedtest-cli
+APScheduler
+scipy
