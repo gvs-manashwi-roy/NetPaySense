@@ -26,23 +26,30 @@ def fetch_towers(lat, lon, radius_km, api_key):
         "limit": 1000
     }
     try:
-        response = requests.get("https://opencellid.org/cell/getInArea", params=params)
+        url = "https://opencellid.org/cell/getInArea"
+        response = requests.get(url, params=params)
         response.raise_for_status()
-        return response.json().get("cells", [])
+        data = response.json()
+        if "error" in data:
+            print(f"OpenCellID API Error: {data['error']} (Code: {data.get('code')})")
+            return None # Fatal error (like limit reached)
+        cells = data.get("cells", [])
+        return cells
     except requests.exceptions.RequestException as e:
         print(f"API error: {e}")
         return []
 
 def find_nearest_tower(lat, lon, api_key):
-    SEARCH_RADII = [0.5, 1, 2, 5, 10, 20, 50]
+    # OpenCellID limit: BBOX must be < 4,000,000 sq meters (~4 sq km)
+    # A 1.0km radius = 2km x 2km box = 4 sq km (the absolute limit).
+    SEARCH_RADII = [0.5, 0.8, 1.0] 
     towers = []
     used_radius = None
 
     for radius in SEARCH_RADII:
-        # print(f"Searching within {radius}km...", end=" ")
         towers = fetch_towers(lat, lon, radius, api_key)
+        if towers is None: break # Stop immediately on fatal errors
         if towers:
-            print(f"Found {len(towers)} tower(s).")
             used_radius = radius
             break
 
@@ -58,4 +65,5 @@ def find_nearest_tower(lat, lon, api_key):
 
     nearest = min(towers, key=lambda t: t["distance_m"])
     nearest["search_radius_km"] = used_radius
+    nearest["total_towers_found"] = len(towers)
     return nearest

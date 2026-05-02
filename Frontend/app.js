@@ -1063,14 +1063,14 @@ function drawGauge(canvasId, score, labelId) {
   const normalizedRisk = riskValue / 100;
   const needleAngle = startAngle + (normalizedRisk * Math.PI);
 
-  // COLOR BY RISK
+  // COLOR BY RISK (Aligned with Backend Tiers: Good 75+, Mid 40+, Poor <40)
   let riskColor = '#22c55e'; // Green for Low Risk
   let riskStatus = 'Low Risk';
 
-  if (riskValue > 45) {
+  if (riskValue > 60) { // Success < 40%
     riskColor = '#ef4444'; // Red for High Risk
     riskStatus = T('risk_high');
-  } else if (riskValue > 15) {
+  } else if (riskValue > 25) { // Success < 75%
     riskColor = '#f59e0b'; // Amber for Medium Risk
     riskStatus = T('risk_mid');
   } else {
@@ -1244,6 +1244,7 @@ function goToLocationChecker() {
 
   document.getElementById('dashboard-panel').classList.add('hidden');
   document.getElementById('app-main').classList.remove('hidden');
+  goStep(1); // 🔥 Reset to search panel
 }
 
 function getMyLocation() {
@@ -1440,7 +1441,7 @@ async function runAnalyzing(raw, btn) {
         btn.textContent = 'Check'; btn.disabled = false;
         goStep(1);
       }
-    }, 1500);
+    }, 800);
 
   } catch (err) {
     alert(err.message || 'Error connecting to backend');
@@ -1525,7 +1526,7 @@ async function runAnalyzingWithCoords(name, lat, lng, btn, liveMetrics = null) {
         btn.textContent = 'Check'; btn.disabled = false;
         goStep(1);
       }
-    }, 1500);
+    }, 800);
   } catch (err) {
     // Bug 3 fix: show the actual error message, not a generic 'Backend Error'
     alert(err.message || 'Error connecting to backend');
@@ -1535,7 +1536,7 @@ async function runAnalyzingWithCoords(name, lat, lng, btn, liveMetrics = null) {
 }
 
 function animateSteps() {
-  const delays = [600, 1200, 1900, 2600];
+  const delays = [300, 600, 900, 1200];
   ['a1', 'a2', 'a3', 'a4'].forEach((id, i) =>
     setTimeout(() => document.getElementById(id).classList.add('done'), delays[i])
   );
@@ -1589,22 +1590,23 @@ function populateSignal(sig) {
   setTimeout(() => drawGauge('results-risk-gauge', numericScore, 'results-risk-label'), 100);
 
   // Pass operator to recommendations
-  populateRecs(sig.tier, sig.best_network);
+  populateRecs(sig.tier, sig.best_network, sig.metrics.tower_count);
 }
 
-function populateRecs(tier, operator) {
+function populateRecs(tier, operator, towerCount) {
   const list = document.getElementById('rec-list');
   list.innerHTML = '';
   const langRecs = REC_TRANSLATIONS[currentLang] || REC_TRANSLATIONS.en;
   
-  console.log("DEBUG: populating recs for tier:", tier, "with operator:", operator);
+  console.log(`DEBUG: Found ${towerCount || 0} nearest towers. Chosen: ${operator}`);
 
   langRecs[tier].forEach(r => {
     let text = r.text;
-    // Dynamically replace generic operator with real OpenCellID data using Regex for robustness
-    if (operator && operator !== 'Unknown') {
+    // Dynamically replace generic operator with real data
+    if (operator && operator !== 'Unknown' && operator !== 'Airtel / Jio') {
       text = text.replace(/Airtel \/ Jio/g, operator);
       text = text.replace(/Vi \/ BSNL/g, operator);
+      text = text.replace(/Jio/g, operator); // If text was specific but we have a better one
     }
 
     const li = document.createElement('li');
@@ -1669,8 +1671,8 @@ window.addEventListener('DOMContentLoaded', () => {
   refreshBankStatus();
   applyTranslations(); // 🔥 Initial translation apply
 
-  // Auto-refresh bank status every 60s
-  setInterval(refreshBankStatus, 60000);
+  // Auto-refresh bank status every 120s to reduce terminal noise
+  setInterval(refreshBankStatus, 120000);
 });
 
 
@@ -1907,12 +1909,10 @@ function resetApp() {
   const rbsC = document.getElementById('results-bank-status');
   if (rbsC) rbsC.classList.add('hidden');
 
+  goStep(1); // Always reset to Step 1 internally
   if (isLiveSession) {
     // 🔥 Go back to Main Dashboard for GPS checks
     switchDashboardTab('dash-content');
-  } else {
-    // 🔍 Go back to Search Bar for manual checks
-    goStep(1);
   }
 }
 

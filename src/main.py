@@ -17,6 +17,7 @@ import os
 import json
 from supabase import create_client, Client
 import threading
+import asyncio
 import speedtest
 from datetime import datetime, timedelta
 from typing import Optional, List, Dict
@@ -53,8 +54,6 @@ app.add_middleware(
 @app.on_event("startup")
 async def startup_event():
     """Start the background scraper when the API starts."""
-    print(f"SERVER STARTING FROM: {os.path.abspath(__file__)}")
-    print(f"FRONTEND ABSOLUTE PATH: {os.path.abspath(FRONTEND_DIR)}")
     clean_old_data() # Run cleanup on startup
     
     # Start the background tasks
@@ -65,8 +64,6 @@ async def startup_event():
     
     # Run the first scrape immediately in a separate thread so it doesn't block API startup
     threading.Thread(target=fetch_bank_health, daemon=True).start()
-    
-    print("Background Scraper Started (Interval: 5 min)")
 
 gdf = gpd.read_file(DATA_PATH / "IndiaStatesBoundaryShapes/India_State_Boundary.shp")
 gdf = gdf.to_crs(epsg=4326) # converts to lat/lon
@@ -316,21 +313,28 @@ async def predict(req: PredictionRequest):
             final_quality = m1_quality
             m2_quality = None
 
-        # 2. Community Check
-        has_alert = check_nearby_failures(req.lat, req.lon)
+        # --- Parallelized Backend Checks ---
+        async def mock_bank_status(): return None, None
         
+        # 1. Community Check
+        alert_task = asyncio.to_thread(check_nearby_failures, req.lat, req.lon)
+        # 2. Tower Detection
+        tower_task = asyncio.to_thread(tower.find_nearest_tower, req.lat, req.lon, OPENCELL_API_KEY) if OPENCELL_API_KEY else asyncio.sleep(0)
+        # 3. Bank Status
+        bank_task = asyncio.to_thread(get_bank_upi_status, req.bank_name) if req.bank_name else mock_bank_status()
+
+        # Gather all tasks
+        results = await asyncio.gather(alert_task, tower_task, bank_task)
+        has_alert = results[0]
+        nearest_tower_data = results[1] if OPENCELL_API_KEY else {}
+        status, stale = results[2]
+
         ui_data = get_ui_data(final_quality, upi_score, has_alert)
+        best_operator = nearest_tower_data.get("operator", "Unknown") if nearest_tower_data else "Unknown"
 
-        # ----------- REAL SIM OPERATOR DETECTION -----------
-        nearest_tower_data = tower.find_nearest_tower(req.lat, req.lon, OPENCELL_API_KEY) if OPENCELL_API_KEY else {}
-        best_operator = nearest_tower_data.get("operator", "Unknown")
-
-
-
-        # 3. Bank Status Override (Official Scraper Data)
+        # 3. Bank Status Override
         bank_warning = None
-        if req.bank_name:
-            status, stale = get_bank_upi_status(req.bank_name)
+        if req.bank_name and status:
             if status == "DOWN":
                 ui_data["tier"] = "poor"
                 ui_data["badge"] = "CRITICAL RISK"
@@ -350,7 +354,7 @@ async def predict(req: PredictionRequest):
             "bars": ui_data["bars"], "dbm": ui_data["dbm"], "label": ui_data["label"],
             "upi": ui_data["upi"], "badge": ui_data["badge"], "type": ui_data["type"],
             "recommendation": ui_data["rec"], "confidence": f"{(final_quality + 1) * 30}%", 
-            "best_network": best_operator,  # 🎯 Recommendation always based on Nearest Tower
+            "best_network": best_operator if best_operator != "Unknown" else (live_operator or "Airtel / Jio"),
             "bank_warning": bank_warning,
             "server_version": "v4.1",
             "metrics": { 
@@ -358,7 +362,8 @@ async def predict(req: PredictionRequest):
                 "upload": f"{up:.2f} Mbps",
                 "latency": f"{lat:.1f} ms",
                 "is_verified": is_verified,
-                "operator": live_operator or best_operator  # 🟢 Badge shows current SIM (fallback to tower)
+                "operator": live_operator or best_operator,  # 🟢 Badge shows current SIM (fallback to tower)
+                "tower_count": nearest_tower_data.get("total_towers_found", 0)
             },
             "community_alert": has_alert
         }
@@ -370,25 +375,27 @@ async def predict(req: PredictionRequest):
 @app.get("/pulse-test")
 async def pulse_test():
     """Runs a real-time speed test (Ping, Download, Upload, Operator)."""
-    try:
+    def run_speedtest():
         st = speedtest.Speedtest()
         st.get_best_server()
-        
         ping = st.results.ping
-        # Perform download/upload tests
         dn = st.download() / 1000000 # Mbps
         up = st.upload() / 1000000 # Mbps
         isp = st.results.client.get('isp', 'Unknown')
-        
         return {
             "download": round(dn, 2),
             "upload": round(up, 2),
             "latency": round(ping, 1),
             "operator": isp
         }
+
+    try:
+        # Run the blocking speedtest in a separate thread to keep API responsive
+        result = await asyncio.to_thread(run_speedtest)
+        return result
     except Exception as e:
         print(f"Speedtest Error: {e}")
-        return {"error": "Speedtest failed. Using historical data instead."}
+        return {"error": "Speedtest failed. Check your connection."}
 
 @app.get("/bank-status")
 async def bank_status():
@@ -469,16 +476,11 @@ async def bank_predict(req: BankPredictionRequest):
 _supabase_url = os.getenv("SUPABASE_URL", "")
 _supabase_key = os.getenv("SUPABASE_KEY", "")
 
-print(f"DEBUG: SUPABASE_URL set: {bool(_supabase_url)}")
-print(f"DEBUG: SUPABASE_KEY set: {bool(_supabase_key)}")
-
 try:
     if _supabase_url and _supabase_key and not _supabase_url.startswith("https://your"):
         supabase: Client = create_client(_supabase_url, _supabase_key)
-        print("Supabase connected.")
     else:
         supabase = None
-        print("Supabase credentials not set - feedback will be disabled. Fill in .env file.")
 except Exception as e:
     print(f"Supabase Connection Error: {e}")
     supabase = None
