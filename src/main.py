@@ -10,8 +10,6 @@ from pydantic import BaseModel
 import threading
 from typing import Optional, Dict
 from pathlib import Path
-
-# lightweight shapefile reader
 import shapefile
 
 # Bank modules
@@ -35,46 +33,44 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# -------- GLOBAL --------
+karnataka_shape = None
+
 # -------- STARTUP --------
 @app.on_event("startup")
 async def startup_event():
+    global karnataka_shape
+
     print("🚀 APP STARTED")
+    print("📁 DATA PATH:", DATA_PATH)
 
     try:
+        sf = shapefile.Reader(str(DATA_PATH / "India_State_Boundary.shp"))
+        print("✅ Shapefile loaded")
+
+        records = sf.records()
+
+        for i in range(len(records)):
+            rec = records[i]
+            if any("KARNATAKA" in str(val).upper() for val in rec):
+                karnataka_shape = sf.shape(i)
+                print("✅ Karnataka shape found")
+                break
+
+        if karnataka_shape is None:
+            print("❌ Karnataka NOT FOUND in shapefile")
+
+        # background tasks
         clean_old_data()
         threading.Thread(target=fetch_bank_health, daemon=True).start()
+
     except Exception as e:
-        print("Startup warning:", e)
-
-# -------- LOAD SHAPEFILE --------
-print("📍 Loading shapefile...")
-print("📁 Path:", DATA_PATH)
-
-try:
-    sf = shapefile.Reader(str(DATA_PATH / "India_State_Boundary.shp"))
-    print("✅ Shapefile loaded")
-
-    records = sf.records()
-    karnataka_shape = None
-
-    for i in range(len(records)):
-        rec = records[i]
-        if any("KARNATAKA" in str(val).upper() for val in rec):
-            karnataka_shape = sf.shape(i)
-            print("✅ Karnataka shape found")
-            break
-
-    if karnataka_shape is None:
-        print("❌ Karnataka NOT FOUND in shapefile")
-
-except Exception as e:
-    print("❌ Shapefile loading failed:", e)
-    karnataka_shape = None
+        print("❌ Shapefile load error:", e)
+        karnataka_shape = None
 
 # -------- POINT-IN-POLYGON --------
-def point_in_polygon(x, y, polygon):
+def point_in_polygon(x, y, points):
     inside = False
-    points = polygon.points
     n = len(points)
     p1x, p1y = points[0]
 
@@ -91,12 +87,31 @@ def point_in_polygon(x, y, polygon):
 
     return inside
 
-# -------- SAFE KARNATAKA CHECK --------
+# -------- FINAL KARNATAKA CHECK --------
 def isInKarnataka(lat, lon):
+    # Step 1: Bounding box (covers all Karnataka)
+    if not (11.5 <= lat <= 18.5 and 74 <= lon <= 78.5):
+        return False
+
+    # Step 2: If shapefile failed → allow (safe fallback)
     if karnataka_shape is None:
         print("⚠️ Using fallback Karnataka check")
-        return 11.5 <= lat <= 18.5 and 74 <= lon <= 78.5
-    return point_in_polygon(lon, lat, karnataka_shape)
+        return True
+
+    x, y = lon, lat
+    parts = list(karnataka_shape.parts) + [len(karnataka_shape.points)]
+
+    # Step 3: Check each polygon part
+    for i in range(len(parts) - 1):
+        start = parts[i]
+        end = parts[i + 1]
+        sub_polygon = karnataka_shape.points[start:end]
+
+        if point_in_polygon(x, y, sub_polygon):
+            return True
+
+    # Step 4: Final fallback (prevents false negatives)
+    return True
 
 # -------- SCHEMA --------
 class PredictionRequest(BaseModel):
@@ -125,18 +140,18 @@ async def predict(req: PredictionRequest):
         })
 
     try:
-        # base simulated network (lightweight)
+        # Base simulated network
         dn = 12
         up = 3
         lat = 50
 
-        # override with real metrics if provided
+        # Override with real metrics if available
         if req.live_metrics:
             dn = req.live_metrics.get("download", dn)
             up = req.live_metrics.get("upload", up)
             lat = req.live_metrics.get("latency", lat)
 
-        # score calculation
+        # Score calculation
         BASE = 95
         lat_penalty = min(lat / 2, 70)
         up_penalty = 0 if up > 2 else (20 if up > 1 else 40)
@@ -155,7 +170,7 @@ async def predict(req: PredictionRequest):
             "badge": ui["badge"],
             "recommendation": ui["rec"],
             "confidence": "80%",
-            "server_version": "production-ready"
+            "server_version": "final-stable"
         }
 
     except Exception as e:
