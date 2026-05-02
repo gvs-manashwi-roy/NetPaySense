@@ -1572,9 +1572,15 @@ function populateSignal(sig) {
   // Handle Verified/Operator display
   const vBox = document.getElementById('results-verified-box');
   const opName = document.getElementById('results-operator-name');
-  if (vBox && sig.metrics && (sig.metrics.is_verified || sig.metrics.operator !== 'Unknown')) {
+  if (vBox && sig.metrics && sig.metrics.operator && sig.metrics.operator !== 'Unknown') {
     vBox.classList.remove('hidden');
-    if (opName) opName.textContent = sig.metrics.operator || 'Mobile';
+    
+    // Dynamically set the text based on whether it's verified (live test) or just detected (nearby)
+    const opName = document.getElementById('results-operator-name');
+    const opStatus = document.getElementById('results-verification-status');
+    
+    if (opName) opName.textContent = sig.metrics.operator;
+    if (opStatus) opStatus.textContent = sig.metrics.is_verified ? 'Verified' : 'Nearest Tower';
   } else if (vBox) {
     vBox.classList.add('hidden');
   }

@@ -356,7 +356,7 @@ async def predict(req: PredictionRequest):
                 "download": f"{dn:.2f} Mbps", 
                 "upload": f"{up:.2f} Mbps",
                 "latency": f"{lat:.1f} ms",
-                "is_verified": is_verified or bool(nearest_tower_data),
+                "is_verified": is_verified,
                 "operator": live_operator or best_operator
             },
             "community_alert": has_alert
