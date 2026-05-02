@@ -1,4 +1,4 @@
-# 🛰️ NetPaySense: AI-Powered UPI Reliability Checker (v4.2 Pro)
+# 🛰️ NetPaySense: AI-Powered UPI Reliability Checker (v4.3 Pro)
 
 **NetPaySense** is a real-time diagnostic platform designed to predict the success probability of UPI payments with localized intelligence. It combines **Dual-Model Machine Learning (Neural Networks + KDTree)** with **Live Bank Pulse Monitoring** and **Multilingual v4.2 Localization** to provide a premium, accessible payment safety dashboard.
 
@@ -8,10 +8,10 @@
 - **🌍 Multilingual Intelligence**: Full native support for **Kannada, Hindi, Tamil, and Telugu**, including localized analytics and recommendations.
 - **🎯 Precision Risk Meter**: A state-of-the-art canvas-based gauge providing real-time risk visualization (Low/Medium/High) based on network physics.
 - **🗺️ Smart Network Map**: AI-suggested "Better Network Zones" visualized on a live map, recommending the absolute best signal spot within 50 meters.
-- **🏦 Real-time Bank Pulse**: Live 60-second health monitoring of major Indian banks (SBI, HDFC, ICICI, etc.) synced via Supabase.
+- **🏦 Real-time Bank Pulse**: Live 120-second health monitoring of major Indian banks (SBI, HDFC, ICICI, etc.) synced via Supabase.
 - **🚨 Community Failure Alerts**: Crowd-sourced regional failure detection that warns users if nearby payments are failing in real-time.
 - **🗼 Tower Intelligence**: Real-time nearest cell tower detection via OpenCellID API, mapping MNC/MCC codes to major Indian operators (Airtel, Jio, BSNL, Vi) for hyper-local network recommendations.
-- **✨ Premium Glassmorphism UI**: A high-end, mobile-first design system with optimized Dark/Light modes and custom-styled localized components.
+- **✨ Premium Glassmorphism UI**: A high-end, mobile-first design system with optimized Dark/Light modes and v4.3 performance parallelization.
 
 ---
 
