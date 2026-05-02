@@ -216,3 +216,10 @@ __pycache__/
 node_modules/
 data/*.csv
 .venv_final/
+pip_check_temp/
+*.shp
+*.shx
+*.dbf
+*.prj
+*.pkl
+*.whl
