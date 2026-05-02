@@ -48,6 +48,8 @@ async def startup_event():
 
 # -------- LOAD SHAPEFILE --------
 print("Loading shapefile...")
+print("Checking path:", DATA_PATH)
+print("Files:", list((DATA_PATH).glob("*")))
 sf = shapefile.Reader(str(DATA_PATH / "India_State_Boundary.shp"))
 
 # find Karnataka shape index
