@@ -16,3 +16,5 @@ shapely
 speedtest-cli
 APScheduler
 scipy
+selenium
+webdriver-manager
