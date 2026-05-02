@@ -1328,6 +1328,41 @@ function runCheck() {
   resetFeedbackUI(); // 🔥 Reset feedback state for new test
   goStep(2);
   runAnalyzing(raw, btn);
+  navigator.geolocation.getCurrentPosition((pos) => {
+    const lat = pos.coords.latitude;
+    const lon = pos.coords.longitude;
+
+    fetch("https://netpaysense.onrender.com/predict", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            lat: lat,
+            lon: lon
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        console.log("Backend:", data);
+
+        // ✅ UPDATE UI (adjust IDs if needed)
+        document.getElementById("results-risk-label").innerText = data.tier;
+        document.getElementById("upi-value").innerText = data.upi;
+
+        document.getElementById("rec-list").innerHTML =
+            `<li>${data.recommendation}</li>`;
+
+        btn.textContent = "Check";
+        btn.disabled = false;
+    })
+    .catch(err => {
+        console.error(err);
+        btn.textContent = "Check";
+        btn.disabled = false;
+    });
+
+});
 }
 
 function runCheckWithCoords(name, lat, lng, liveMetrics = null) {
