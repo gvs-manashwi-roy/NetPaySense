@@ -17,6 +17,7 @@ import os
 import json
 from supabase import create_client, Client
 import threading
+import asyncio
 import speedtest
 from datetime import datetime, timedelta
 from typing import Optional, List, Dict
@@ -40,7 +41,7 @@ FRONTEND_DIR = BASE_DIR / "Frontend"
 
 OPENCELL_API_KEY = os.getenv("OPENCELL_API_KEY")
 
-app = FastAPI(title="NetPaySense API")
+app = FastAPI(title="🛰️ NetPaySense: AI-Powered UPI Reliability Checker (v4.3 Pro)")
 
 # Enable CORS
 app.add_middleware(
@@ -53,8 +54,6 @@ app.add_middleware(
 @app.on_event("startup")
 async def startup_event():
     """Start the background scraper when the API starts."""
-    print(f"SERVER STARTING FROM: {os.path.abspath(__file__)}")
-    print(f"FRONTEND ABSOLUTE PATH: {os.path.abspath(FRONTEND_DIR)}")
     clean_old_data() # Run cleanup on startup
     
     # Start the background tasks
@@ -65,9 +64,8 @@ async def startup_event():
     
     # Run the first scrape immediately in a separate thread so it doesn't block API startup
     threading.Thread(target=fetch_bank_health, daemon=True).start()
-    
-    print("Background Scraper Started (Interval: 5 min)")
 
+# Load Karnataka Boundary
 gdf = gpd.read_file(DATA_PATH / "IndiaStatesBoundaryShapes/India_State_Boundary.shp")
 gdf = gdf.to_crs(epsg=4326) # converts to lat/lon
 karnataka = gdf[gdf["STATE"] == "KARNATAKA"]
@@ -96,7 +94,7 @@ class OoklaNN(nn.Module):
 
 # Load Models
 ookla_model = OoklaNN(input_size=5)
-ookla_model.load_state_dict(torch.load(MODEL_PATH / 'ookla_nn.pth'))
+ookla_model.load_state_dict(torch.load(MODEL_PATH / 'ookla_nn.pth', weights_only=True))
 ookla_model.eval()
 ookla_scaler = joblib.load(MODEL_PATH / 'ookla_scaler.pkl')
 
@@ -143,7 +141,6 @@ class FeedbackRequest(BaseModel):
 
 # ----------- UI LOGIC -----------
 def get_ui_data(quality_score, upi_score, community_alert=False):
-    # Force consistency: The Score is the master
     if community_alert or upi_score < 45:
         tier = "poor"
         badge = "High Risk" if not community_alert else "COMMUNITY DOWNTIME"
@@ -184,367 +181,164 @@ async def predict(req: PredictionRequest):
         })
 
     try:
-        # 1. Hybrid Spatial Lookup
         dist, idx = tree.query([req.lat, req.lon])
         nearest = look_up_df.iloc[idx]
         
-        # Initialize better_location fallbacks
-        better_lat = float(nearest['lat'])
-        better_lon = float(nearest['lon'])
+        better_lat, better_lon = float(nearest['lat']), float(nearest['lon'])
 
-        # ----------- SMART MAP ADDITION (NON-DESTRUCTIVE) -----------
         try:
             distances, indices = tree.query([req.lat, req.lon], k=10)
             best_score = float('-inf')
-            best_data = nearest  # fallback
-
             for i in indices:
                 row = look_up_df.iloc[i]
-                # scoring logic: High Speed - Low Latency
                 score = row['download_mbps'] - row['latency_ms']
                 if score > best_score:
                     best_score = score
-                    best_data = row
+                    better_lat, better_lon = float(row['lat']), float(row['lon'])
+        except: pass
 
-            if best_data is not None:
-                better_lat = float(best_data['lat'])
-                better_lon = float(best_data['lon'])
-        except Exception as e:
-            print("Smart map error:", e)
-            better_lat = float(nearest['lat'])
-            better_lon = float(nearest['lon'])
-
-        dn = nearest['download_mbps']
-        up = nearest['upload_mbps']
-        lat = nearest['latency_ms']
+        dn, up, lat = nearest['download_mbps'], nearest['upload_mbps'], nearest['latency_ms']
         
-        # If either Download or Upload is "Suspect", we trust the risk immediately.
-        # This prevents hiding a "Dead Upload Zone" like Muthodi.
         if dn > 15.0 and up > 2.0: 
             dists_k, indices_k = tree.query([req.lat, req.lon], k=5)
             neighbors = look_up_df.iloc[indices_k]
-            dn = neighbors['download_mbps'].mean()
-            up = neighbors['upload_mbps'].mean()
-            lat = neighbors['latency_ms'].mean()
+            dn, up, lat = neighbors['download_mbps'].mean(), neighbors['upload_mbps'].mean(), neighbors['latency_ms'].mean()
         
-        # Use the very nearest coordinates for display
-        authentic_lat = float(nearest['lat'])
-        authentic_lon = float(nearest['lon'])
+        authentic_lat, authentic_lon = float(nearest['lat']), float(nearest['lon'])
 
-        # 2. Network Quality Models
         is_verified = False
         live_operator = None
         if req.live_metrics:
-            dn = req.live_metrics.get('download', dn)
-            up = req.live_metrics.get('upload', up)
-            lat = req.live_metrics.get('latency', lat)
-            live_operator = req.live_metrics.get('operator')
-            is_verified = True
-
-        m1_features = pd.DataFrame([[
-            dn, up, lat,
-            authentic_lat, authentic_lon
-        ]], columns=['download_mbps', 'upload_mbps', 'latency_ms', 'lat', 'lon'])
-        m1_scaled = ookla_scaler.transform(m1_features)
-
-        with torch.no_grad():
-            m1_out = ookla_model(torch.tensor(m1_scaled, dtype=torch.float32))
-            # Neural net still used for its trained feature understanding,
-            # but UPI score is now calculated from first principles below.
-            _ = torch.argmax(m1_out, dim=1).item()
+            dn, up, lat = req.live_metrics.get('download', dn), req.live_metrics.get('upload', up), req.live_metrics.get('latency', lat)
+            live_operator, is_verified = req.live_metrics.get('operator'), True
 
         # --- Physics-Based UPI Success Rate ---
-        # A UPI transaction is ~50KB of data. What causes failures:
-        #   1. HIGH LATENCY  → round-trip exceeds UPI's timeout window (~30s)
-        #   2. LOW UPLOAD    → payment request never fully reaches the bank server
-        #   3. LOW DOWNLOAD  → minor, only affects receiving the small confirmation
         BASE_RATE = 95.0
+        lat_penalty = 0 if lat < 50 else (15 if lat < 100 else (35 if lat < 150 else (55 if lat < 200 else 75)))
+        up_penalty = 0 if up >= 2.0 else (8 if up >= 1.0 else (25 if up >= 0.5 else 60))
+        dn_penalty = 0 if dn >= 2.0 else (5 if dn >= 0.5 else 12)
 
-        # LATENCY PENALTY — most critical factor
-        if lat < 50:
-            lat_penalty = 0       # Excellent: sub-50ms feels instant
-        elif lat < 100:
-            lat_penalty = 15      # Acceptable: slight delay but usually succeeds
-        elif lat < 150:
-            lat_penalty = 35      # Risky: approaching timeout range for slow banks
-        elif lat < 200:
-            lat_penalty = 55      # High failure risk
-        else:
-            lat_penalty = 75      # Near-certain timeout
-
-        # UPLOAD PENALTY — second most critical
-        if up >= 2.0:
-            up_penalty = 0        # Sufficient: UPI needs ~50KB, 2Mbps handles it easily
-        elif up >= 1.0:
-            up_penalty = 8        # Marginal but usually fine
-        elif up >= 0.5:
-            up_penalty = 25       # Risky: large payloads may stall
-        else:
-            up_penalty = 60       # Critical: payment request unlikely to complete
-
-        # DOWNLOAD PENALTY — minor, only receiving small confirmation ACK
-        if dn >= 2.0:
-            dn_penalty = 0
-        elif dn >= 0.5:
-            dn_penalty = 5
-        else:
-            dn_penalty = 12
-
-        # Small jitter for realism (real networks fluctuate ±2%)
         jitter = (np.random.random() - 0.5) * 4.0
+        upi_score = max(5.0, min(99.8, BASE_RATE - lat_penalty - up_penalty - dn_penalty + jitter))
 
-        upi_score = BASE_RATE - lat_penalty - up_penalty - dn_penalty + jitter
-        upi_score = max(5.0, min(99.8, upi_score))
-
-        # Derive tier FROM the UPI score (prevents gauge/score contradictions)
-        if upi_score >= 75:
-            m1_quality = 2  # Good
-        elif upi_score >= 40:
-            m1_quality = 1  # Mid
-        else:
-            m1_quality = 0  # Poor
+        m1_quality = 2 if upi_score >= 75 else (1 if upi_score >= 40 else 0)
 
         if req.rsrp is not None and req.rsrq is not None:
             m2_features = np.array([[req.rsrp, req.rsrq, req.snr or 0, req.cqi or 10, req.dbm or -90]])
             m2_quality = signal_model.predict(m2_features)[0]
             final_quality = min(m1_quality, m2_quality)
-            
-            # If Model 2 (Signal) is worse than Model 1 (Speeds), dampen the score
-            if m2_quality < m1_quality:
-                upi_score *= 0.8 if m2_quality == 1 else 0.4
+            if m2_quality < m1_quality: upi_score *= 0.8 if m2_quality == 1 else 0.4
         else:
             final_quality = m1_quality
-            m2_quality = None
 
-        # 2. Community Check
-        has_alert = check_nearby_failures(req.lat, req.lon)
-        
+        # --- Parallelized Backend Checks ---
+        async def mock_bank_status(): return None, None
+        alert_task = asyncio.to_thread(check_nearby_failures, req.lat, req.lon)
+        tower_task = asyncio.to_thread(tower.find_nearest_tower, req.lat, req.lon, OPENCELL_API_KEY) if OPENCELL_API_KEY else asyncio.sleep(0)
+        bank_task = asyncio.to_thread(get_bank_upi_status, req.bank_name) if req.bank_name else mock_bank_status()
+
+        results = await asyncio.gather(alert_task, tower_task, bank_task)
+        has_alert, nearest_tower_data, (status, stale) = results[0], (results[1] if OPENCELL_API_KEY else {}), results[2]
+
         ui_data = get_ui_data(final_quality, upi_score, has_alert)
+        best_operator = nearest_tower_data.get("operator", "Unknown") if nearest_tower_data else "Unknown"
 
-        # ----------- REAL SIM OPERATOR DETECTION -----------
-        nearest_tower_data = tower.find_nearest_tower(req.lat, req.lon, OPENCELL_API_KEY) if OPENCELL_API_KEY else {}
-        best_operator = nearest_tower_data.get("operator", "Unknown")
-        
         # 🔥 Fallback: If no tower found, default to most likely operators for Karnataka
-        if best_operator == "Unknown":
+        if not best_operator or best_operator == "Unknown":
             best_operator = "Jio / Airtel"
 
-        # 3. Bank Status Override (Official Scraper Data)
         bank_warning = None
-        if req.bank_name:
-            status, stale = get_bank_upi_status(req.bank_name)
+        if req.bank_name and status:
             if status == "DOWN":
-                ui_data["tier"] = "poor"
-                ui_data["badge"] = "CRITICAL RISK"
-                ui_data["upi"] = "Near 0% - Server Down"
-                ui_data["rec"] = f"STOP: {req.bank_name} servers are currently DOWN. Use Cash."
-                bank_warning = f"{req.bank_name} servers are offline."
+                ui_data.update({"tier": "poor", "badge": "CRITICAL RISK", "upi": "Near 0% - Server Down", "rec": f"STOP: {req.bank_name} servers are DOWN.", "bank_warning": f"{req.bank_name} offline."})
             elif status == "FLUCTUATING":
-                ui_data["tier"] = "mid"
-                ui_data["badge"] = "Medium Risk (Bank Fluctuating)"
-                ui_data["upi"] = "Mid Success - 45-60%"
-                ui_data["rec"] = f"Warning: {req.bank_name} servers are unstable. Proceed with caution."
-                bank_warning = f"{req.bank_name} servers are fluctuating."
+                ui_data.update({"tier": "mid", "badge": "Medium Risk", "upi": "Mid Success - 45-60%", "rec": "Bank servers unstable.", "bank_warning": f"{req.bank_name} fluctuating."})
 
-        response_data = {
+        return {
             "lat": authentic_lat, "lon": authentic_lon, "tier": ui_data["tier"],
             "better_location": {"lat": better_lat, "lon": better_lon},
             "bars": ui_data["bars"], "dbm": ui_data["dbm"], "label": ui_data["label"],
             "upi": ui_data["upi"], "badge": ui_data["badge"], "type": ui_data["type"],
             "recommendation": ui_data["rec"], "confidence": f"{(final_quality + 1) * 30}%", 
-            "best_network": best_operator,  # 🎯 Recommendation always based on Nearest Tower
-            "bank_warning": bank_warning,
-            "server_version": "v4.1",
-            "metrics": { 
-                "download": f"{dn:.2f} Mbps", 
-                "upload": f"{up:.2f} Mbps",
-                "latency": f"{lat:.1f} ms",
-                "is_verified": is_verified,
-                "operator": live_operator or best_operator  # 🟢 Badge shows current SIM (fallback to tower)
-            },
+            "best_network": best_operator if best_operator != "Unknown" else (live_operator or "Airtel / Jio"),
+            "bank_warning": bank_warning, "server_version": "v4.3",
+            "metrics": { "download": f"{dn:.2f} Mbps", "upload": f"{up:.2f} Mbps", "latency": f"{lat:.1f} ms", "is_verified": is_verified, "operator": live_operator or best_operator, "tower_count": nearest_tower_data.get("total_towers_found", 0) if nearest_tower_data else 0 },
             "community_alert": has_alert
         }
-        return response_data
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-# ----------- BANK MONITORING API -----------
-@app.get("/pulse-test")
-async def pulse_test():
-    """Runs a real-time speed test (Ping, Download, Upload, Operator)."""
-    try:
-        st = speedtest.Speedtest()
-        st.get_best_server()
-        
-        ping = st.results.ping
-        # Perform download/upload tests
-        dn = st.download() / 1000000 # Mbps
-        up = st.upload() / 1000000 # Mbps
-        isp = st.results.client.get('isp', 'Unknown')
-        
-        return {
-            "download": round(dn, 2),
-            "upload": round(up, 2),
-            "latency": round(ping, 1),
-            "operator": isp
-        }
-    except Exception as e:
-        print(f"Speedtest Error: {e}")
-        return {"error": "Speedtest failed. Using historical data instead."}
-
-@app.get("/bank-status")
-async def bank_status():
-    """Returns ALL banks with their latest UPI status from Supabase."""
-    try:
-        if not supabase:
-            return {"banks": [], "problematic_banks": [], "last_updated": None}
-
-        # Get records from the last 2 hours
-        cutoff = (datetime.now() - timedelta(hours=2)).isoformat()
-        response = (
-            supabase.table("bank_health")
-            .select("bank_name, upi, timestamp")
-            .gte("timestamp", cutoff)
-            .order("timestamp", desc=True)
-            .execute()
-        )
-        
-        if not response.data:
-            return {"banks": [], "problematic_banks": [], "last_updated": None}
-
-        df = pd.DataFrame(response.data)
-        df['timestamp'] = pd.to_datetime(df['timestamp']).dt.tz_localize(None)
-        latest_df = df.drop_duplicates(subset=["bank_name"], keep="first")
-
-        current_time = datetime.now()
-        banks = []
-        for _, row in latest_df.iterrows():
-            upi_raw = str(row.get("upi", "UP")).strip().upper()
-            status = "DOWN" if "DOWN" in upi_raw else ("FLUCTUATING" if any(x in upi_raw for x in ["WARN", "FLUCT"]) else "UP")
-            icon = "❌" if status == "DOWN" else ("⚠️" if status == "FLUCTUATING" else "✅")
-            
-            ts = row["timestamp"]
-            stale = (current_time - ts).total_seconds() / 60 > 20 if pd.notna(ts) else True
-            banks.append({"bank": row["bank_name"], "status": status, "icon": icon, "timestamp": str(ts), "stale": stale})
-
-        # Sort: Issues first
-        order = {"DOWN": 0, "FLUCTUATING": 1, "UP": 2}
-        banks.sort(key=lambda x: order.get(x["status"], 3))
-        
-        return {
-            "banks": banks,
-            "problematic_banks": [b for b in banks if b["status"] != "UP"],
-            "last_updated": str(latest_df["timestamp"].max()) if not latest_df.empty else None
-        }
-    except Exception as e:
-        return {"error": str(e)}
-
-@app.post("/bank-predict")
-async def bank_predict(req: BankPredictionRequest):
-    """Calculates final success rate based on both Network and Bank Server health."""
-    status, stale = get_bank_upi_status(req.bank)
-    final_score = req.network_score
-    status_text = "Online"
-    
-    if status == "DOWN":
-        final_score = 5.0
-        status_text = "Down"
-    elif status == "FLUCTUATING":
-        final_score = req.network_score * 0.4
-        status_text = "Fluctuating"
-
-    # Dynamic Operator Check (OpenCellID)
-    nearest_tower_data = tower.find_nearest_tower(req.lat, req.lon, OPENCELL_API_KEY) if OPENCELL_API_KEY else {}
-    best_op = nearest_tower_data.get("operator", "Unknown")
-
-    return {
-        "name": req.bank, 
-        "status": status_text, 
-        "success_rate": "High" if final_score > 80 else ("Moderate" if final_score > 50 else "Low"),
-        "final_score": round(final_score, 1),
-        "is_stale": stale,
-        "best_network": best_op,
-        "operator": best_op
-    }
 
 # ----------- SUPABASE CLIENT -----------
 _supabase_url = os.getenv("SUPABASE_URL", "")
 _supabase_key = os.getenv("SUPABASE_KEY", "")
-
 try:
-    if _supabase_url and _supabase_key and not _supabase_url.startswith("https://your"):
-        supabase: Client = create_client(_supabase_url, _supabase_key)
-        print("Supabase connected.")
-    else:
-        supabase = None
-        print("Supabase credentials not set - feedback will be disabled.")
-except Exception as e:
-    print(f"Supabase Connection Error: {e}")
-    supabase = None
+    supabase: Client = create_client(_supabase_url, _supabase_key) if _supabase_url and _supabase_key and not _supabase_url.startswith("https://your") else None
+except: supabase = None
 
-# ----------- COMMUNITY FEEDBACK -----------
-
-def get_all_feedback() -> pd.DataFrame:
-    """Fetch recent feedback rows from Supabase."""
-    if supabase is None:
-        return pd.DataFrame()
+# ----------- BANK API -----------
+@app.get("/bank-status")
+async def bank_status():
     try:
-        # Fetch rows from last 24 hours to keep query fast
+        if not supabase: return {"banks": [], "problematic_banks": [], "last_updated": None}
+        cutoff = (datetime.now() - timedelta(hours=2)).isoformat()
+        response = supabase.table("bank_health").select("bank_name, upi, timestamp").gte("timestamp", cutoff).order("timestamp", desc=True).execute()
+        if not response.data: return {"banks": [], "problematic_banks": [], "last_updated": None}
+        df = pd.DataFrame(response.data)
+        df['timestamp'] = pd.to_datetime(df['timestamp']).dt.tz_localize(None)
+        latest_df = df.drop_duplicates(subset=["bank_name"], keep="first")
+        banks = []
+        for _, row in latest_df.iterrows():
+            upi_raw = str(row.get("upi", "UP")).strip().upper()
+            status = "DOWN" if "DOWN" in upi_raw else ("FLUCTUATING" if any(x in upi_raw for x in ["WARN", "FLUCT"]) else "UP")
+            banks.append({"bank": row["bank_name"], "status": status, "icon": "❌" if status == "DOWN" else ("⚠️" if status == "FLUCTUATING" else "✅"), "timestamp": str(row["timestamp"]), "stale": (datetime.now() - row["timestamp"]).total_seconds() / 60 > 20})
+        banks.sort(key=lambda x: {"DOWN": 0, "FLUCTUATING": 1, "UP": 2}.get(x["status"], 3))
+        return {"banks": banks, "problematic_banks": [b for b in banks if b["status"] != "UP"], "last_updated": str(latest_df["timestamp"].max())}
+    except Exception as e: return {"error": str(e)}
+
+@app.post("/bank-predict")
+async def bank_predict(req: BankPredictionRequest):
+    status, stale = get_bank_upi_status(req.bank)
+    final_score = req.network_score * (0.4 if status == "FLUCTUATING" else (0.05 if status == "DOWN" else 1.0))
+    nearest_tower_data = tower.find_nearest_tower(req.lat, req.lon, OPENCELL_API_KEY) if OPENCELL_API_KEY else {}
+    best_op = nearest_tower_data.get("operator", "Unknown") if nearest_tower_data else "Unknown"
+    return {"name": req.bank, "status": status or "Online", "success_rate": "High" if final_score > 80 else ("Moderate" if final_score > 50 else "Low"), "final_score": round(final_score, 1), "is_stale": stale, "best_network": best_op, "operator": best_op}
+
+@app.get("/pulse-test")
+async def pulse_test():
+    def run_speedtest():
+        st = speedtest.Speedtest(); st.get_best_server()
+        return {"download": round(st.download()/1e6, 2), "upload": round(st.upload()/1e6, 2), "latency": round(st.results.ping, 1), "operator": st.results.client.get('isp', 'Unknown')}
+    try: return await asyncio.to_thread(run_speedtest)
+    except: return {"error": "Speedtest failed."}
+
+# ----------- FEEDBACK -----------
+def get_all_feedback() -> pd.DataFrame:
+    if not supabase: return pd.DataFrame()
+    try:
         threshold = (datetime.now() - timedelta(hours=24)).isoformat()
-        response = (
-            supabase.table("feedback")
-            .select("lat, lon, outcome, metrics, timestamp")
-            .gte("timestamp", threshold)
-            .execute()
-        )
-        rows = response.data
-        if not rows:
-            return pd.DataFrame()
-        df = pd.DataFrame(rows)
-        df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce', utc=True)
-        df['timestamp'] = df['timestamp'].dt.tz_localize(None)  # strip tz for comparison
+        response = supabase.table("feedback").select("lat, lon, outcome, metrics, timestamp").gte("timestamp", threshold).execute()
+        if not response.data: return pd.DataFrame()
+        df = pd.DataFrame(response.data)
+        df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce', utc=True).dt.tz_localize(None)
         return df.dropna(subset=['timestamp'])
-    except Exception as e:
-        print(f"Supabase fetch error: {e}")
-        return pd.DataFrame()
+    except: return pd.DataFrame()
 
 def check_nearby_failures(lat, lon, radius_km=2.0):
     try:
         df = get_all_feedback()
         if df.empty: return False
-
-        # 30-minute window
-        threshold = datetime.now() - timedelta(minutes=30)
-        recent_failed = df[df['outcome'] == 'failed'].copy()
-        recent_failed = recent_failed[recent_failed['timestamp'] >= threshold]
-
+        recent_failed = df[(df['outcome'] == 'failed') & (df['timestamp'] >= datetime.now() - timedelta(minutes=30))]
         if recent_failed.empty: return False
-
-        from scipy.spatial import KDTree
-        fb_coords = recent_failed[['lat', 'lon']].values
-        fb_tree = KDTree(fb_coords)
-        
-        # Search radius (approx degrees for 2km is ~0.018)
-        indices = fb_tree.query_ball_point([lat, lon], 0.018)
-        return len(indices) >= 5 # Alert if 5+ failures nearby
-    except:
-        return False
+        indices = KDTree(recent_failed[['lat', 'lon']].values).query_ball_point([lat, lon], 0.018)
+        return len(indices) >= 5
+    except: return False
 
 @app.post("/feedback")
 async def submit_feedback(req: FeedbackRequest):
-    if supabase is None:
-        return {"status": "error", "message": "Supabase not connected"}
+    if not supabase: return {"status": "error", "message": "Supabase not connected"}
     try:
-        supabase.table("feedback").insert({
-            "lat": req.lat,
-            "lon": req.lon,
-            "outcome": req.outcome,
-            "metrics": req.metrics,
-            "timestamp": datetime.now().isoformat()
-        }).execute()
+        supabase.table("feedback").insert({"lat": req.lat, "lon": req.lon, "outcome": req.outcome, "metrics": req.metrics, "timestamp": datetime.now().isoformat()}).execute()
         return {"status": "success"}
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
+    except Exception as e: return {"status": "error", "message": str(e)}
 
-# ----------- FRONTEND -----------
 app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="static")
