@@ -29,9 +29,6 @@ def fetch_towers(lat, lon, radius_km, api_key):
     try:
         url = "https://opencellid.org/cell/getInArea"
         response = requests.get(url, params=params)
-    try:
-        url = "https://opencellid.org/cell/getInArea"
-        response = requests.get(url, params=params)
         response.raise_for_status()
         data = response.json()
         if "error" in data:

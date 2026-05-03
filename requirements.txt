@@ -8,3 +8,13 @@ numpy
 supabase
 apscheduler
 pyshp
+selenium
+webdriver-manager
+torch
+joblib
+geopandas
+shapely
+scikit-learn
+speedtest-cli
+scipy
+requests
