@@ -48,6 +48,7 @@ logging.basicConfig(
 # ─────────────────────────────────────────────
 def fetch_bank_health():
     """Scrapes bank health data and saves it to CSV."""
+    print(">>> [DEBUG] fetch_bank_health() triggered!")
     timestamp = datetime.now().isoformat()
     logging.info("Starting scrape...")
 
@@ -136,12 +137,17 @@ def fetch_bank_health():
             
             # Insert in batches if needed, or all at once since it's small (~50-100 banks)
             supabase.table("bank_health").insert(records).execute()
+            print(f">>> [DEBUG] Saved {len(data)} banks to Supabase successfully!")
             logging.info(f"Saved {len(data)} banks to Supabase")
         else:
+            print(">>> [DEBUG] ERROR: Supabase client not initialized, skipping save.")
             logging.error("Supabase client not initialized, skipping save.")
         return True
     except Exception as e:
-        logging.error(f"Scraper Error: {e}")
+        import traceback
+        err_msg = f">>> [DEBUG] CRITICAL SCRAPER ERROR: {e}\n{traceback.format_exc()}"
+        print(err_msg)
+        logging.error(err_msg)
         return False
     finally:
         if 'driver' in locals():
