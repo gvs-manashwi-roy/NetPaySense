@@ -156,6 +156,16 @@ def fetch_bank_health():
         err_msg = f">>> [DEBUG] CRITICAL SCRAPER ERROR: {e}\n{traceback.format_exc()}"
         print(err_msg)
         logging.error(err_msg)
+        
+        # Take a screenshot to debug what the browser actually sees (e.g., Cloudflare block)
+        if 'driver' in locals():
+            try:
+                screenshot_path = DATA_PATH / "error_screenshot.png"
+                driver.save_screenshot(str(screenshot_path))
+                print(f">>> [DEBUG] Screenshot saved to {screenshot_path}")
+            except Exception as ss_err:
+                print(f">>> [DEBUG] Failed to save screenshot: {ss_err}")
+                
         return False
     finally:
         if 'driver' in locals():
