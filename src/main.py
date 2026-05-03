@@ -19,6 +19,7 @@ from supabase import create_client, Client
 import threading
 import asyncio
 import speedtest
+import math
 from datetime import datetime, timedelta
 from typing import Optional, List, Dict
 import pandas as pd
@@ -154,19 +155,33 @@ class SpeedtestService:
 
         try:
             st = speedtest.Speedtest(timeout=5)
-            # To find servers near the user from a remote cloud server:
-            # 1. Spoof the client location
-            st.lat_lon = (lat, lon)
+            # 1. Get ALL servers
+            all_servers = st.get_servers()
             
-            # 2. Get closest servers to those coordinates
-            servers = st.get_closest_servers(limit=5)
-            if not servers:
+            # 2. Filter specifically for servers in INDIA
+            india_servers = []
+            for s_list in all_servers.values():
+                for s in s_list:
+                    if s.get('country') == 'India':
+                        # Calculate distance to user's coords
+                        d_lat = s['lat'] - lat
+                        d_lon = (s['lon'] - lon) * math.cos(math.radians(lat))
+                        s['dist'] = (d_lat**2 + d_lon**2)**0.5 * 111.32
+                        india_servers.append(s)
+            
+            if not india_servers:
                 return 0
             
-            # 3. Ping them to get the actual transit latency from HF -> User Region
-            best = st.get_best_server(servers)
+            # 3. Pick top 5 closest to user IN India
+            india_servers.sort(key=lambda x: x['dist'])
+            top_5 = india_servers[:5]
+            
+            # 4. Measure RTT from HF (US) -> India Target
+            best = st.get_best_server(top_5)
             transit_latency = best.get('latency', 0)
             
+            print(f"TRIANGULATION TARGET: {best['name']}, {best['country']} (Dist to user: {best['dist']:.1f}km) | Transit: {transit_latency}ms")
+
             with self.lock:
                 self.cache[key] = transit_latency
             return transit_latency
