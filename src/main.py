@@ -437,7 +437,7 @@ async def predict(req: PredictionRequest):
             "recommendation": ui_data["rec"], "confidence": f"{(final_quality + 1) * 30}%", 
             "best_network": best_operator if best_operator != "Unknown" else (live_operator or "Airtel / Jio"),
             "bank_warning": bank_warning,
-            "server_version": "v5.2",
+            "server_version": "v5.2.1",
             "metrics": { 
                 "download": f"{dn:.2f} Mbps", 
                 "upload": f"{up:.2f} Mbps",
