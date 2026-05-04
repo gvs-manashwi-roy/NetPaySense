@@ -1,9 +1,9 @@
-const CACHE_NAME = 'netpaysense-v2';
+const CACHE_NAME = 'netpaysense-v3';
 const ASSETS = [
   './',
   './index.html',
   './style.css?v=4.5',
-  './app.js?v=4.4',
+  './app.js?v=4.5',
   './manifest.json',
   'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css',
   'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js',
