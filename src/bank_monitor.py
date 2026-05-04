@@ -37,10 +37,14 @@ DATA_RETENTION_HOURS = 12
 # ─────────────────────────────────────────────
 # LOGGING
 # ─────────────────────────────────────────────
+# Configure logging to write to both file and console
 logging.basicConfig(
-    filename=LOG_FILE,
     level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s"
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    handlers=[
+        logging.FileHandler(LOG_FILE),
+        logging.StreamHandler()
+    ]
 )
 
 # ─────────────────────────────────────────────
