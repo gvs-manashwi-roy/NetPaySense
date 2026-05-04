@@ -1370,7 +1370,7 @@ function getMyLocation() {
 
       useLiveLocation(lat, lng, name, liveMetrics);
     },
-    () => useLiveLocation(12.9716, 77.5946, 'Bengaluru', null)
+    () => useLiveLocation(12.9716, 77.5946, 'Bengaluru', { download: 0, upload: 0, latency: 999, local_latency: 999, operator: 'Unknown (Offline)' })
   );
 }
 
@@ -1548,10 +1548,12 @@ async function runAnalyzingWithCoords(name, lat, lng, btn, liveMetrics = null) {
       });
     } catch (fetchErr) {
       clearTimeout(timeoutId);
-      // Network failed or timed out — try offline fallback
-      if (liveMetrics && (fetchErr.name === 'AbortError' || fetchErr.name === 'TypeError')) {
+      // Network failed or timed out — always try offline fallback for connectivity errors
+      if (fetchErr.name === 'AbortError' || fetchErr.name === 'TypeError') {
         console.warn('Backend unreachable. Using offline heuristic fallback.');
-        renderOfflineFallback(name, lat, lng, liveMetrics, btn);
+        // Use liveMetrics if available, otherwise assume worst-case dead zone
+        const fallbackMetrics = liveMetrics || { download: 0, upload: 0, latency: 999, local_latency: 999, operator: 'Unknown (Offline)' };
+        renderOfflineFallback(name, lat, lng, fallbackMetrics, btn);
         return;
       }
       throw fetchErr; // re-throw for non-network errors
