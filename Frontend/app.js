@@ -1356,14 +1356,6 @@ function getMyLocation() {
         name = await translateIfNeeded(name, currentLang);
       } catch { }
 
-      // 🧪 MOCK OFFLINE MODE — append ?mockOffline=1 to URL to test dead-zone fallback
-      if (new URLSearchParams(window.location.search).get('mockOffline') === '1') {
-        console.warn('[MOCK] Simulating dead-zone offline fallback');
-        const deadZoneMetrics = { download: 0, upload: 0, latency: 999, local_latency: 999, operator: 'Mock Dead Zone' };
-        useLiveLocation(lat, lng, name, deadZoneMetrics);
-        return;
-      }
-
       // 🛰️ Run Pro Client-Side Speed Test
       let liveMetrics = null;
       btn.textContent = T('analyzing_title');
