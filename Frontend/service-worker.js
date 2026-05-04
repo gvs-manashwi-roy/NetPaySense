@@ -1,4 +1,4 @@
-const CACHE_NAME = 'netpaysense-v1';
+const CACHE_NAME = 'netpaysense-v2';
 const ASSETS = [
   './',
   './index.html',
