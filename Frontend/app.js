@@ -1362,7 +1362,11 @@ function getMyLocation() {
       try {
         liveMetrics = await performClientSpeedTest();
         console.log("Real Metrics on Device:", liveMetrics);
-      } catch (e) { console.warn("Pro test failed", e); }
+      } catch (e) {
+        console.warn("Speed test failed — assigning dead-zone metrics for offline fallback", e);
+        // Assign dead-zone values so renderOfflineFallback can still classify risk
+        liveMetrics = { download: 0, upload: 0, latency: 999, local_latency: 999, operator: 'Unknown' };
+      }
 
       useLiveLocation(lat, lng, name, liveMetrics);
     },
