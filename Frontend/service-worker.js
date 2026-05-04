@@ -1,4 +1,4 @@
-const CACHE_NAME = 'netpaysense-v3';
+const CACHE_NAME = 'netpaysense-v4';
 const ASSETS = [
   './',
   './index.html',
@@ -56,10 +56,13 @@ self.addEventListener('fetch', event => {
           });
         });
       }).catch(() => {
-        // If both cache and network fail (offline), fallback to index.html
+        // If both cache and network fail (offline), fallback to index.html for navigation
         if (event.request.mode === 'navigate') {
           return caches.match('./index.html');
         }
+        // For other failed requests (like images/fonts while offline), return a generic error response
+        // so we don't throw "TypeError: Failed to convert value to 'Response'"
+        return Response.error();
       })
   );
 });
