@@ -1370,7 +1370,8 @@ function getMyLocation() {
 
       useLiveLocation(lat, lng, name, liveMetrics);
     },
-    () => useLiveLocation(12.9716, 77.5946, 'Bengaluru', { download: 0, upload: 0, latency: 999, local_latency: 999, operator: 'Unknown (Offline)' })
+    () => useLiveLocation(12.9716, 77.5946, 'Bengaluru', { download: 0, upload: 0, latency: 999, local_latency: 999, operator: 'Unknown (Offline)' }),
+    { timeout: 8000, maximumAge: 10000, enableHighAccuracy: false }
   );
 }
 
