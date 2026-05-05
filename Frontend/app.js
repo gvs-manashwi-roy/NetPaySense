@@ -26,12 +26,9 @@ if (typeof window.APP_LOADED === 'undefined') {
       section_notifications: 'Notifications',
       notif_risk: 'Payment Risk Alerts',
       notif_risk_sub: 'Get notified on high risk',
-<<<<<<< HEAD
       vibration: 'Vibration',
       vibration_sub: 'Haptic feedback on actions',
-=======
 
->>>>>>> fixed-ui
       section_privacy: 'Data & Privacy',
       clear_history: 'Clear Search History',
       clear_history_sub: 'Remove all recent checks',
@@ -149,12 +146,9 @@ if (typeof window.APP_LOADED === 'undefined') {
       section_notifications: 'ಅಧಿಸೂಚನೆಗಳು',
       notif_risk: 'ಪಾವತಿ ಅಪಾಯದ ಎಚ್ಚರಿಕೆಗಳು',
       notif_risk_sub: 'ಹೆಚ್ಚಿನ ಅಪಾಯದ ಬಗ್ಗೆ ಅಧಿಸೂಚನೆ ಪಡೆಯಿರಿ',
-<<<<<<< HEAD
       vibration: 'ಕಂಪನ',
       vibration_sub: 'ಕ್ರಿಯೆಗಳ ಮೇಲೆ ಹ್ಯಾಪ್ಟಿಕ್ ಪ್ರತಿಕ್ರಿಯೆ',
-=======
 
->>>>>>> fixed-ui
       section_privacy: 'ಡೇಟಾ ಮತ್ತು ಗೌಪ್ಯತೆ',
       clear_history: 'ಹುಡುಕಾಟದ ಇತಿಹಾಸವನ್ನು ಅಳಿಸಿ',
       clear_history_sub: 'ಎಲ್ಲಾ ಇತ್ತೀಚಿನ ಪರಿಶೀಲನೆಗಳನ್ನು ತೆಗೆದುಹಾಕಿ',
@@ -272,12 +266,9 @@ if (typeof window.APP_LOADED === 'undefined') {
       section_notifications: 'सूचनाएं',
       notif_risk: 'भुगतान जोखिम अलर्ट',
       notif_risk_sub: 'उच्च जोखिम पर सूचना प्राप्त करें',
-<<<<<<< HEAD
       vibration: 'कंपन',
       vibration_sub: 'क्रियाओं पर हैप्टिक फीडबैक',
-=======
 
->>>>>>> fixed-ui
       section_privacy: 'डेटा और गोपनीयता',
       clear_history: 'खोज इतिहास मिटाएं',
       clear_history_sub: 'सभी हालिया जांच हटा दें',
@@ -395,12 +386,9 @@ if (typeof window.APP_LOADED === 'undefined') {
       section_notifications: 'அறிவிப்புகள்',
       notif_risk: 'கட்டண அபாய எச்சரிக்கைகள்',
       notif_risk_sub: 'அதிக அபாயம் குறித்து அறிவிப்பைப் பெறுங்கள்',
-<<<<<<< HEAD
       vibration: 'அதிர்வு',
       vibration_sub: 'செயல்களுக்கான ஹேப்டிக் பின்னூட்டம்',
-=======
 
->>>>>>> fixed-ui
       section_privacy: 'தரவு மற்றும் தனியுரிமை',
       clear_history: 'தேடல் வரலாற்றை அழி',
       clear_history_sub: 'அனைத்து சமீபத்திய சரிபார்ப்புகளையும் அகற்று',
@@ -518,12 +506,9 @@ if (typeof window.APP_LOADED === 'undefined') {
       section_notifications: 'నోటిఫికేషన్‌లు',
       notif_risk: 'చెల్లింపు రిస్క్ హెచ్చరికలు',
       notif_risk_sub: 'అధిక రిస్క్ ఉన్నప్పుడు నోటిఫికేషన్ పొందండి',
-<<<<<<< HEAD
       vibration: 'వైబ్రేషన్',
       vibration_sub: 'చర్యలపై హ్యాప్టిక్ ఫీడ్‌బ్యాక్',
-=======
 
->>>>>>> fixed-ui
       section_privacy: 'డేటా & గోప్యత',
       clear_history: 'శోధన చరిత్రను తుడిచివేయి',
       clear_history_sub: 'అన్ని ఇటీవలి తనిఖీలను తొలగించు',
@@ -1256,7 +1241,6 @@ function hash(str) {
   return h;
 }
 
-<<<<<<< HEAD
 // ── CLIENT-SIDE SPEED TEST (PRO) ──
 async function performClientSpeedTest() {
   const metrics = {
@@ -1276,9 +1260,7 @@ async function performClientSpeedTest() {
     } catch (e) { console.warn("Operator check failed", e); }
 
     // 2. Measure TRUE Local Latency (Edge Ping)
-    // Using speed.cloudflare.com ensures the TLS connection is warm for the subsequent speed tests!
     try {
-      // Warm-up to establish TCP/SSL connection
       await fetch('https://speed.cloudflare.com/cdn-cgi/trace', { mode: 'no-cors', cache: 'no-store' });
       
       const edgePings = [];
@@ -1290,7 +1272,7 @@ async function performClientSpeedTest() {
       metrics.local_latency = Math.round(Math.min(...edgePings));
     } catch (e) { console.warn("Edge ping failed", e); }
 
-    // 3. Measure Backend Latency (For system health diagnostics)
+    // 3. Measure Backend Latency
     await fetch('/test-download', { method: 'HEAD' });
     const pings = [];
     for (let i = 0; i < 3; i++) {
@@ -1300,8 +1282,7 @@ async function performClientSpeedTest() {
     }
     metrics.latency = Math.min(...pings);
 
-    // 4. Measure Download Speed (10MB from Cloudflare Global Edge)
-    // Since we just pinged speed.cloudflare.com, the TLS connection is fully warm.
+    // 4. Measure Download Speed
     const startDown = performance.now();
     const downRes = await fetch('https://speed.cloudflare.com/__down?bytes=10000000', { cache: 'no-store' });
     const blob = await downRes.blob();
@@ -1310,7 +1291,7 @@ async function performClientSpeedTest() {
     const adjDown = Math.max(0.01, durationDown - (metrics.local_latency / 1000));
     metrics.download = parseFloat(((sizeDownBits / adjDown) / 1000000).toFixed(2));
 
-    // 5. Measure Upload Speed (1MB to Cloudflare Global Edge)
+    // 5. Measure Upload Speed
     const uploadData = new Uint8Array(1024 * 1024);
     const startUp = performance.now();
     await fetch('https://speed.cloudflare.com/__up', { method: 'POST', body: uploadData, cache: 'no-store' });
@@ -1326,8 +1307,6 @@ async function performClientSpeedTest() {
   }
 }
 
-=======
->>>>>>> fixed-ui
 // ── Location & Check ──
 function goToLocationChecker() {
   isLiveSession = false; // Reset session type when manually checking new location
@@ -1336,12 +1315,8 @@ function goToLocationChecker() {
 
   document.getElementById('dashboard-panel').classList.add('hidden');
   document.getElementById('app-main').classList.remove('hidden');
-<<<<<<< HEAD
   goStep(1); // 🔥 Reset to search panel
-=======
-  // 🔥 FIX: Ensure we start at Step 1 (Search Bar) and not the previous result
-  goStep(1);
->>>>>>> fixed-ui
+
 }
 
 function getMyLocation() {
@@ -1384,7 +1359,6 @@ function getMyLocation() {
         name = await translateIfNeeded(name, currentLang);
       } catch { }
 
-<<<<<<< HEAD
       // 🛰️ Run Pro Client-Side Speed Test
       let liveMetrics = null;
       btn.textContent = T('analyzing_title');
@@ -1392,16 +1366,7 @@ function getMyLocation() {
         liveMetrics = await performClientSpeedTest();
         console.log("Real Metrics on Device:", liveMetrics);
       } catch (e) { console.warn("Pro test failed", e); }
-=======
-      // 🛰️ Run Pulse Test
-      let liveMetrics = null;
-      btn.textContent = T('analyzing_title');
-      try {
-        const pulseRes = await fetch('/pulse-test');
-        liveMetrics = await pulseRes.json();
-        if (liveMetrics.error) liveMetrics = null;
-      } catch (e) { console.warn("Pulse test failed", e); }
->>>>>>> fixed-ui
+
 
       useLiveLocation(lat, lng, name, liveMetrics);
     },
@@ -1440,7 +1405,8 @@ function runCheck() {
     const lat = pos.coords.latitude;
     const lon = pos.coords.longitude;
 
-    fetch("https://netpaysense.onrender.com/predict", {
+    // Use local relative route for prediction
+    fetch("/predict", {
         method: "POST",
         headers: {
             "Content-Type": "application/json"
@@ -1724,7 +1690,6 @@ function populateSignal(sig) {
   // Handle Verified/Operator display
   const vBox = document.getElementById('results-verified-box');
   const opName = document.getElementById('results-operator-name');
-<<<<<<< HEAD
   if (vBox && sig.metrics && sig.metrics.operator && sig.metrics.operator !== 'Unknown') {
     vBox.classList.remove('hidden');
     
@@ -1734,11 +1699,7 @@ function populateSignal(sig) {
     
     if (opName) opName.textContent = sig.metrics.operator;
     if (opStatus) opStatus.textContent = sig.metrics.is_verified ? 'Verified' : 'Nearest Tower';
-=======
-  if (vBox && sig.metrics && (sig.metrics.is_verified || sig.metrics.operator !== 'Unknown')) {
-    vBox.classList.remove('hidden');
-    if (opName) opName.textContent = sig.metrics.operator || 'Mobile';
->>>>>>> fixed-ui
+
   } else if (vBox) {
     vBox.classList.add('hidden');
   }
@@ -1754,16 +1715,10 @@ function populateRecs(tier, operator, towerCount) {
   const list = document.getElementById('rec-list');
   list.innerHTML = '';
   const langRecs = REC_TRANSLATIONS[currentLang] || REC_TRANSLATIONS.en;
-<<<<<<< HEAD
   
   console.log(`DEBUG: Found ${towerCount || 0} nearest towers. Chosen: ${operator}`);
 
-=======
 
-  console.log(`DEBUG: Found ${towerCount || 0} nearest towers. Chosen: ${operator}`);
-
-
->>>>>>> fixed-ui
   langRecs[tier].forEach(r => {
     let text = r.text;
     // Dynamically replace generic operator with real data
@@ -2021,7 +1976,10 @@ async function submitFeedbackNew() {
     lat: rawLat || 0,
     lon: rawLng || 0,
     outcome: fbOutcome,
-    metrics: currentSig?.metrics || {}
+    latency: currentSig?.metrics?.latency || null,
+    download: currentSig?.metrics?.download || null,
+    upload: currentSig?.metrics?.upload || null,
+    operator: currentSig?.metrics?.operator || null
   };
 
   try {
@@ -2113,10 +2071,6 @@ function sendAiMsg(text, fromInput = false) {
 
 // ── Dashboard Tabs ──
 function switchDashboardTab(tabId, el) {
-<<<<<<< HEAD
-=======
-  window.scrollTo({ top: 0, behavior: 'smooth' });
->>>>>>> fixed-ui
   document.getElementById('app-main').classList.add('hidden');
   document.getElementById('dashboard-panel').classList.remove('hidden');
   ['dash-content', 'dash-map', 'dash-bank'].forEach(id => document.getElementById(id).classList.add('hidden'));
@@ -2222,8 +2176,4 @@ function initMap() {
       }
     }, err => { }, { enableHighAccuracy: true, timeout: 5000 });
   }
-<<<<<<< HEAD
 }
-=======
-}
->>>>>>> fixed-ui
