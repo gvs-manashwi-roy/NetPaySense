@@ -641,12 +641,15 @@ def check_nearby_failures(lat, lon, radius_km=2.0):
         recent_failed = df[df['outcome'] == 'failed'].copy()
         recent_failed = recent_failed[recent_failed['timestamp'] >= threshold]
 
+        print(f"DEBUG: Checking alerts near {lat}, {lon}")
+        print(f"DEBUG: Recent failures in last 30 mins: {len(recent_failed)}")
+
         nearby_count = 0
         for _, row in recent_failed.iterrows():
             d_lat = float(row['lat']) - lat
             d_lon = (float(row['lon']) - lon) * np.cos(np.radians(lat))
             dist = (d_lat**2 + d_lon**2)**0.5 * 111.32
-            
+            print(f"   -> Found failure at {row['lat']}, {row['lon']} (Dist: {dist:.3f} km)")
             if dist <= radius_km:
                 nearby_count += 1
 
@@ -655,6 +658,7 @@ def check_nearby_failures(lat, lon, radius_km=2.0):
             print(f"COMMUNITY ALERT TRIGGERED! ({nearby_count} failures nearby)")
             return True
 
+        print(f"No alert — only {nearby_count} nearby failure(s) (need 5+)")
         return False
     except Exception as e:
         print(f"Community Alert Error: {e}")
